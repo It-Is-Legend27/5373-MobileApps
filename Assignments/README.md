@@ -2,4 +2,4 @@
 
 | #  | Folder Link | Assignment Description                  |
 |:--:|-------------|-----------------------------------------|
-| 1  | [A03](A03)  | N/A |
+| 1  | [A04](./A04/README.md)  | [Candy Store API](./A04/README.md)
