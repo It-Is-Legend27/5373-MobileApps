@@ -33,9 +33,10 @@ description = """Description
 # This is the `app` instance which passes in a series of keyword arguments
 # configuring this instance of the api. The URL's are obviously fake.
 app = FastAPI(
-    title="KidsInVans.Fun🤡",
+    title="Candy Store",
+    root_path="/candystore/api/v1",
     description=description,
-    version="0.0.1",
+    version="1.0.0",
     terms_of_service="http://www.kidsinvans.fun/worldleterms/",
     contact={
         "name": "KidsInVans.Fun",
@@ -86,9 +87,6 @@ a module written that you include with statements above.
 
 data = []
 
-with open("people.json") as f:
-    data = json.load(f)
-
 """
   _____   ____  _    _ _______ ______  _____
  |  __ \ / __ \| |  | |__   __|  ____|/ ____|
@@ -114,11 +112,7 @@ def people(id: int = -1):
     Retrieve a list of all the people
     """
 
-    if id < 0:
-        shuffle(data)
-        return data
-    else:
-        return data[id - 1]
+    return "Hello!"
 
 
 @app.get("/people2/{id}")
@@ -228,4 +222,4 @@ Note:
     The right side (app) is the bearingiable name of the FastApi instance declared at the top of the file.
 """
 if __name__ == "__main__":
-    uvicorn.run("api:app", host="127.0.0.1", port=8080, log_level="debug", reload=True)
+    uvicorn.run("api:app", host="thehonoredone.live", port=8080, log_level="debug", reload=True)
