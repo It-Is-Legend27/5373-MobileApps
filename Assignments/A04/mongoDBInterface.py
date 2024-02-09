@@ -13,7 +13,7 @@ class MongoDBInterface:
         database_name = "candy_store"
         # Create the connection URL
         connection_url = f"mongodb://{username}:{password}@{host}:{port}/{database_name}?authSource=admin"
-        self.client = MongoClient(connection_url)
+        self.client = MongoClient()
         self.db = self.client[db_name]
         self.collection = self.db[collection_name]
 
@@ -71,7 +71,9 @@ class MongoDBInterface:
     def delete(self, query):
         # Implement the logic to delete data based on the query
         pass
-
+    
+    def close(self):
+        self.client.close()
 
 if __name__ == "__main__":
     db = MongoDBInterface("candy_store", "candies")

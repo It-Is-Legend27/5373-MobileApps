@@ -2,6 +2,8 @@
 from fastapi import FastAPI, Query, Path
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from mongoDBInterface import MongoDBInterface
+from contextlib import asynccontextmanager
 import uvicorn
 import json
 
@@ -13,11 +15,21 @@ ROOT_PATH:str = ""
 DOCS_URL:str = "/docs"
 SUMMARY:str = "Summary"
 DESCRIPTION:str = "Description"
+database:MongoDBInterface = None
 
 # Needed for CORS
 # origins = ["*"]
 
+@asynccontextmanager
+async def lifespan(app:FastAPI):
+    database = MongoDBInterface("candy_store", "candies")
+    print("start")
+    yield
+    print("close")
+    database.close()
+
 app:FastAPI = FastAPI(
+    lifespan=lifespan,
     title=TITLE,
     root_path=ROOT_PATH,
     docs_url=DOCS_URL,
@@ -43,6 +55,7 @@ app:FastAPI = FastAPI(
 #     allow_methods=["*"],
 #     allow_headers=["*"],
 # )
+
 
 # Routes
 @app.get("/")

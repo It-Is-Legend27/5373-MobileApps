@@ -3,7 +3,7 @@ import json
 import glob
 from rich import print
 import sys
-
+print(1)
 json_files = glob.glob("./categoryJson/*.json")
 
 db = MongoDBInterface('candy_store','candies')
