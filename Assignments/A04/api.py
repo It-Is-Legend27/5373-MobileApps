@@ -5,43 +5,29 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import json
 
-# Builtin libraries
-import os
 
-from random import shuffle
-
-"""
-           _____ _____   _____ _   _ ______ ____
-     /\   |  __ \_   _| |_   _| \ | |  ____/ __ \
-    /  \  | |__) || |     | | |  \| | |__ | |  | |
-   / /\ \ |  ___/ | |     | | | . ` |  __|| |  | |
-  / ____ \| |    _| |_   _| |_| |\  | |   | |__| |
- /_/    \_\_|   |_____| |_____|_| \_|_|    \____/
-
-The `description` is the information that gets displayed when the api is accessed from a browser and loads the base route.
-Also the instance of `app` below description has info that gets displayed as well when the base route is accessed.
-"""
-
-description = """Description
-
-"""
+TITLE:str = "Candy Store"
+HOST:str = "0.0.0"
+PORT:int = 8080
+ROOT_PATH:str = ""
+DOCS_URL:str = "/docs"
+SUMMARY:str = "Summary"
+DESCRIPTION:str = "Description"
 
 # Needed for CORS
 # origins = ["*"]
 
-
-# This is the `app` instance which passes in a series of keyword arguments
-# configuring this instance of the api. The URL's are obviously fake.
-app = FastAPI(
-    title="Candy Store",
-    root_path="/candystore/api/v1",
-    description=description,
+app:FastAPI = FastAPI(
+    title=TITLE,
+    root_path=ROOT_PATH,
+    docs_url=DOCS_URL,
+    summary=SUMMARY,
+    description=DESCRIPTION,
     version="1.0.0",
-    terms_of_service="http://www.kidsinvans.fun/worldleterms/",
     contact={
-        "name": "KidsInVans.Fun",
-        "url": "http://www.kidsinvans.fun/worldle/contact/",
-        "email": "perv@www.kidsinvans.fun",
+        "name": "Angel Badillo",
+        "url": "https://thehonoredone.live",
+        "email": "abadillo0224@mymsutexas.edu",
     },
     license_info={
         "name": "Apache 2.0",
@@ -58,78 +44,11 @@ app = FastAPI(
 #     allow_headers=["*"],
 # )
 
-"""
-  _      ____   _____          _         _____ _                _____ _____ ______  _____
- | |    / __ \ / ____|   /\   | |       / ____| |        /\    / ____/ ____|  ____|/ ____|
- | |   | |  | | |       /  \  | |      | |    | |       /  \  | (___| (___ | |__  | (___
- | |   | |  | | |      / /\ \ | |      | |    | |      / /\ \  \___ \\___ \|  __|  \___ \
- | |___| |__| | |____ / ____ \| |____  | |____| |____ / ____ \ ____) |___) | |____ ____) |
- |______\____/ \_____/_/    \_\______|  \_____|______/_/    \_\_____/_____/|______|_____/
-
-This is where you will add code to load all the countries and not just countries. Below is a single
-instance of the class `CountryReader` that loads countries. There are 6 other continents to load or
-maybe you create your own country file, which would be great. But try to implement a class that 
-organizes your ability to access a countries polygon data.
-"""
-
-
-"""
-  _      ____   _____          _        __  __ ______ _______ _    _  ____  _____   _____
- | |    / __ \ / ____|   /\   | |      |  \/  |  ____|__   __| |  | |/ __ \|  __ \ / ____|
- | |   | |  | | |       /  \  | |      | \  / | |__     | |  | |__| | |  | | |  | | (___
- | |   | |  | | |      / /\ \ | |      | |\/| |  __|    | |  |  __  | |  | | |  | |\___ \
- | |___| |__| | |____ / ____ \| |____  | |  | | |____   | |  | |  | | |__| | |__| |____) |
- |______\____/ \_____/_/    \_\______| |_|  |_|______|  |_|  |_|  |_|\____/|_____/|_____/
-
-This is where methods you write to help with any routes written below should go. Unless you have 
-a module written that you include with statements above.  
-"""
-
-data = []
-
-"""
-  _____   ____  _    _ _______ ______  _____
- |  __ \ / __ \| |  | |__   __|  ____|/ ____|
- | |__) | |  | | |  | |  | |  | |__  | (___
- |  _  /| |  | | |  | |  | |  |  __|  \___ \
- | | \ \| |__| | |__| |  | |  | |____ ____) |
- |_|  \_\\____/ \____/   |_|  |______|_____/
-
- This is where your routes will be defined. Routes are just python functions that retrieve, save, 
- delete, and update data. How you make that happen is up to you.
-"""
-
-
+# Routes
 @app.get("/")
 async def docs_redirect():
     """Api's base route that displays the information created above in the ApiInfo section."""
     return RedirectResponse(url="/docs")
-
-
-@app.get("/people")
-def people(id: int = -1):
-    """
-    Retrieve a list of all the people
-    """
-
-    return "Hello!"
-
-
-@app.get("/people2/{id}")
-def people2(id: int = -1):
-    """
-    Retrieve a list of all the people
-    """
-
-    print(id)
-
-    id = int(id)
-
-    if id < 0:
-        return data
-    else:
-        return data[id - 1]
-
 
 @app.get("/candies")
 def list_all_candies():
@@ -222,4 +141,4 @@ Note:
     The right side (app) is the bearingiable name of the FastApi instance declared at the top of the file.
 """
 if __name__ == "__main__":
-    uvicorn.run("api:app", host="thehonoredone.live", port=8080, log_level="debug", reload=True)
+    uvicorn.run("api:app", host=HOST, port=PORT, log_level="debug", reload=True)
