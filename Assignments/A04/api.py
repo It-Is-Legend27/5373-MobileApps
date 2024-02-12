@@ -1,20 +1,27 @@
 # Libraries for FastAPI
 from fastapi import FastAPI, Query, Path
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from mongoDBInterface import MongoDBInterface
 from contextlib import asynccontextmanager
 import uvicorn
 import json
+import ssl
 
 
-TITLE:str = "Candy Store"
+TITLE:str = "The Honored One's Candy Store™️"
 HOST:str = "0.0.0"
 PORT:int = 8080
 ROOT_PATH:str = ""
 DOCS_URL:str = "/docs"
-SUMMARY:str = "Summary"
-DESCRIPTION:str = "Description"
+SUMMARY:str = "The Honored One's Candy Store™️💯🔥👌"
+DESCRIPTION:str = """
+# The Honored One's Candy Store™️: WE HAVE THE CANDIES
+This API returns candy store stuff. **Enough said**.
+<br>
+![Gojo](https://thehonoredone.live:8080/static/gojo.gif)
+"""
 database:MongoDBInterface = None
 
 # Needed for CORS
@@ -46,7 +53,7 @@ app:FastAPI = FastAPI(
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
 )
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 # Needed for CORS
 # app.add_middleware(
 #     CORSMiddleware,
@@ -154,4 +161,6 @@ Note:
     The right side (app) is the bearingiable name of the FastApi instance declared at the top of the file.
 """
 if __name__ == "__main__":
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain('/home/angel/thehonoredone_certs/thehonoredone.live.crt', keyfile='/home/angel/thehonoredone_certs/thehonoredone.live.key')
     uvicorn.run("api:app", host=HOST, port=PORT, log_level="debug", reload=True)
