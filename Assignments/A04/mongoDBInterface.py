@@ -2,20 +2,12 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 from rich import print
 import re
 
-
 class MongoDBInterface:
-    def __init__(self, db_name=None, collection_name=None):
-        # Replace the following with your own details
-        username = "candy_user"
-        password = "ILoveCandySoMuchIWantToEatYou"
-        host = "localhost"
-        port = "27017"  # Default MongoDB port
-        database_name = "candy_store"
-        # Create the connection URL
-        connection_url = f"mongodb://{username}:{password}@{host}:{port}/{database_name}?authSource=admin"
-        self.client = MongoClient()
+    def __init__(self, user=None, password=None, *, host="localhost", port="27017", db_name=None, collection=None):
+        connection_url = f"mongodb://{user}:{password}@{host}:{port}/{db_name}?authSource=admin"
+        self.client = MongoClient(connection_url)
         self.db = self.client[db_name]
-        self.collection = self.db[collection_name]
+        self.collection = self.db[collection]
 
     def get(self, filter_query={}, pagination=None, sort_order=[]):
         """
@@ -28,7 +20,7 @@ class MongoDBInterface:
         """
 
         # Apply filtering
-        query_result = self.collection.find(filter_query)
+        query_result = self.collection.find(filter_query, {"_id": False})
 
         # Apply sorting
         if sort_order:
@@ -76,7 +68,13 @@ class MongoDBInterface:
         self.client.close()
 
 if __name__ == "__main__":
-    db = MongoDBInterface("candy_store", "candies")
+    from dotenv import load_dotenv
+    import os
+
+    user:str = os.getenv("CANDY_STORE_USER")
+    password:str = os.getenv("CANDY_STORE_PASSWORD")
+
+    db = MongoDBInterface(user, password, db_name="candy_store", collection="candies")
     result = db.get({"category": "gummy-candy"})
     print(result)
     result = db.get(
@@ -91,4 +89,6 @@ if __name__ == "__main__":
             "name": {"$regex": re.compile("Sour", re.IGNORECASE)},
         }
     )
-    print(result)
+    print(db.get())
+    
+    db.close()

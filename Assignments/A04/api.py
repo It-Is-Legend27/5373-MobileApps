@@ -1,6 +1,6 @@
 # Libraries for FastAPI
 from fastapi import FastAPI, Query, Path
-from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.responses import RedirectResponse, FileResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from mongoDBInterface import MongoDBInterface
@@ -8,7 +8,9 @@ from contextlib import asynccontextmanager
 import uvicorn
 import json
 import ssl
-
+import os
+from rich import print
+from dotenv import load_dotenv
 
 TITLE:str = "The Honored One's Candy Store™️"
 HOST:str = "0.0.0"
@@ -22,18 +24,21 @@ This API returns candy store stuff. **Enough said**.
 <br>
 ![Gojo](https://thehonoredone.live:8080/static/gojo.gif)
 """
-database:MongoDBInterface = None
+candy_store_db:MongoDBInterface = None
 
 # Needed for CORS
 # origins = ["*"]
 
 @asynccontextmanager
 async def lifespan(app:FastAPI):
-    database = MongoDBInterface("candy_store", "candies")
-    print("start")
+    load_dotenv()
+    CANDY_USER:str = os.environ.get("CANDY_STORE_USER")
+    CANDY_STORE_PASSWORD = os.environ.get("CANDY_STORE_PASSWORD")
+    
+    global candy_store_db
+    candy_store_db = MongoDBInterface(CANDY_USER, CANDY_STORE_PASSWORD, db_name="candy_store", collection="candies")
     yield
-    print("close")
-    database.close()
+    candy_store_db.close()
 
 app:FastAPI = FastAPI(
     lifespan=lifespan,
@@ -75,7 +80,8 @@ def list_all_candies():
     """
     Retrieve a list of all candies available in the store.
     """
-    pass
+    candy_list:list[dict] = list(candy_store_db.get())
+    return candy_list
 
 
 @app.get("/candies/search")
@@ -95,7 +101,8 @@ def get_candy_details(
     """
     Get detailed information about a specific candy.
     """
-    pass
+    candy_list:list[dict] = list(candy_store_db.get({"id": f"{candy_id}"}))
+    return candy_list
 
 
 @app.post("/candies")
@@ -161,6 +168,4 @@ Note:
     The right side (app) is the bearingiable name of the FastApi instance declared at the top of the file.
 """
 if __name__ == "__main__":
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    ssl_context.load_cert_chain('/home/angel/thehonoredone_certs/thehonoredone.live.crt', keyfile='/home/angel/thehonoredone_certs/thehonoredone.live.key')
-    uvicorn.run("api:app", host=HOST, port=PORT, log_level="debug", reload=True)
+    uvicorn.run("api:app", host=HOST, port=PORT, log_level="debug", reload=True, ssl_certfile='/home/angel/thehonoredone_certs/thehonoredone.live.crt', ssl_keyfile='/home/angel/thehonoredone_certs/thehonoredone.live.key')
