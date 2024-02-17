@@ -17,7 +17,7 @@ HOST:str = "0.0.0"
 PORT:int = 8080
 ROOT_PATH:str = ""
 DOCS_URL:str = "/docs"
-SUMMARY:str = "Candy Store™️💯🔥👌"
+SUMMARY:str = "Candy Store™️👌"
 DESCRIPTION:str = """
 # WE HAVE THE CANDIES
 This API returns candy store stuff. **Enough said**.
