@@ -12,17 +12,15 @@ import os
 from rich import print
 from dotenv import load_dotenv
 
-TITLE:str = "The Honored One's Candy Store™️"
+TITLE:str = "Candy Store™️"
 HOST:str = "0.0.0"
 PORT:int = 8080
 ROOT_PATH:str = ""
 DOCS_URL:str = "/docs"
-SUMMARY:str = "The Honored One's Candy Store™️💯🔥👌"
+SUMMARY:str = "Candy Store™️💯🔥👌"
 DESCRIPTION:str = """
-# The Honored One's Candy Store™️: WE HAVE THE CANDIES
+# WE HAVE THE CANDIES
 This API returns candy store stuff. **Enough said**.
-<br>
-![Gojo](https://thehonoredone.live:8080/static/gojo.gif)
 """
 candy_store_db:MongoDBInterface = None
 
