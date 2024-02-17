@@ -37,14 +37,14 @@ class MongoManager:
         database: str = None,
         collection: str = None,
     ) -> None:
-        self.username:str = username
-        self.password:str = password
-        self.host:str = host
-        self.port:int = port
-        self.database:str = database
-        self.collection:str = collection
-        self.connection_url:str = None
-        self.client:MongoClient = None
+        self.username: str = username
+        self.password: str = password
+        self.host: str = host
+        self.port: int = port
+        self.database: str = database
+        self.collection: str = collection
+        self.connection_url: str = None
+        self.client: MongoClient = None
 
         if self.username is None and self.password is None:
             self.connection_url = f"mongodb://{self.host}:{self.port}/"
@@ -69,9 +69,9 @@ class MongoManager:
                 self.collection = self.database[self.collection]
 
     def __str__(self):
-        return f"url: {self.connection_url} coll: {self.collection_name}"
+        return f"url: {self.connection_url}"
 
-    def setDb(self, db_name):
+    def setDb(self, db_name:str):
         """Sets the current database."""
         if db_name in self.client.list_database_names():
             self.database = self.client[db_name]
@@ -79,7 +79,7 @@ class MongoManager:
             print(f"Database {db_name} does not exist. Creating {db_name}.")
             self.database = self.client[db_name]
 
-    def setCollection(self, collection_name):
+    def setCollection(self, collection_name:str):
         """Sets the current collection."""
         if self.database is not None:  # Corrected the check here
             if collection_name in self.database.list_collection_names():
@@ -93,7 +93,7 @@ class MongoManager:
         else:
             print("No database selected. Use set_database() first.")
 
-    def dropCollection(self, collection_name):
+    def dropCollection(self, collection_name:str):
         """Deletes a collection from the current database."""
         if self.database is not None:  # Corrected the check here
             if collection_name in self.database.list_collection_names():
@@ -104,7 +104,7 @@ class MongoManager:
         else:
             print("No database selected. Use set_database() first.")
 
-    def dropDb(self, db_name):
+    def dropDb(self, db_name:str):
         """Deletes a database."""
         if db_name in self.client.list_database_names():
             self.client.drop_database(db_name)
@@ -117,46 +117,12 @@ class MongoManager:
         else:
             print(f"Database {db_name} does not exist.")
 
-    def get(self, **kwargs):
-        """
-        Retrieves documents from the collection based on the provided criteria.
-
-        :param filter_query: Dictionary for filtering documents.
-        :param pagination: Tuple or dictionary with 'skip' and 'limit' for pagination.
-        :param sort_order: List of tuples specifying field and direction to sort by.
-        :return: List of documents matching the criteria.
-        """
-
-        self.query = kwargs.get("query", {})
-        self.filter = kwargs.get("filter", {})
-        self.skip = kwargs.get("skip", 0)
-        self.limit = kwargs.get("limit", 0)
-        self.sort_criteria = kwargs.get("sort_criteria", [("_id,1")])
-
-        result_data = {}
-
-        try:
-            results = (
-                self.collection.find(self.query, self.filter)
-                .sort(self.sort_criteria)
-                .skip(self.skip)
-                .limit(self.limit)
-            )
-            resultList = list(results)
-            if len(resultList) >= 0:
-
-                kwargs["success"] = True
-                kwargs["result_size"] = len(resultList)
-                kwargs["data"] = resultList
-
-                return kwargs
-        except PyMongoError as e:
-            # print(f"An error occurred: {e}")
-            kwargs["success"] = False
-            kwargs["error"] = e
-            return kwargs
-
-    def get2(self, **kwargs):
+    def get(self, 
+            query:dict = {},
+            skip:int = 0,
+            limit:int = 0,
+            sort: list[tuple] = [("id", 1)],
+            ):
         """
         Retrieves documents from the collection based on the provided criteria.
 
@@ -167,22 +133,14 @@ class MongoManager:
         :return: Dictionary with the operation's success status, result size, and data.
         """
 
-        query = kwargs.get("query", {})
-        skip = kwargs.get("skip", 0)
-        limit = kwargs.get("limit", 10)  # Assuming a default limit might be helpful
-        sort_criteria = kwargs.get(
-            "sort_criteria", [("_id", 1)]
-        )  # Fixed the sort criteria syntax
-
         try:
             results = (
-                self.collection.find(query).sort(sort_criteria).skip(skip).limit(limit)
+                self.collection.find(query).sort(sort).skip(skip).limit(limit)
             )
-            resultList = list(results)
-            return {"success": True, "result_size": len(resultList), "data": resultList}
+            resultList:list = list(results)
+            return {"result_size": len(resultList), "data": resultList}
         except PyMongoError as e:
             return {
-                "success": False,
                 "error": str(
                     e
                 ),  # It's often a good idea to convert exceptions to strings for readability
