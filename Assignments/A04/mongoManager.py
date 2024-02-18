@@ -98,7 +98,9 @@ class MongoManager:
         :return: Dictionary with the operation's success status, result size, and data.
         """
 
-        results: Cursor = self.collection.find(query, filter).sort(sort).skip(skip).limit(limit)
+        results: Cursor = (
+            self.collection.find(query, filter).sort(sort).skip(skip).limit(limit)
+        )
         return list(results)
 
     def post(self, document: list[dict] | dict) -> dict:
@@ -106,13 +108,15 @@ class MongoManager:
             result: InsertOneResult = self.collection.insert_one(document)
             return {
                 "acknowledged": result.acknowledged,
-                "inserted_ids": result.inserted_id,
+                "inserted_ids": [str(result.inserted_id)],
             }
         elif isinstance(document, list):
             results: InsertManyResult = self.collection.insert_many(document)
+
+            results.inserted_ids = [str(objId) for objId in results.inserted_ids]
             return {
                 "acknowledged": results.acknowledged,
-                "inserted_ids": results.inserted_ids,
+                "inserted_ids": str(results.inserted_ids),
             }
         else:
             raise PyMongoError(message="Invalid document")
@@ -140,11 +144,11 @@ class MongoManager:
             "matched_count": result.matched_count,
             "modified_count": result.modified_count,
             "raw_result": result.raw_result,
-            "upserted_id": result.upserted_id,
+            "upserted_id": str(result.upserted_id),
         }
 
     def delete(self, query: dict) -> dict:
-        result: DeleteResult = self.collection.delete_one(query)
+        result: DeleteResult = self.collection.delete_many(query)
         return {
             "acknowledged": result.acknowledged,
             "deleted_count": result.deleted_count,

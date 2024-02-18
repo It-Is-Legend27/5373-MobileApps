@@ -50,7 +50,6 @@ def load_database(
         with open(file) as f:
             data:dict = json.load(f)
 
-            summary["count"] = len(data)
             summary["name"] = category
             summary["id"] = int(i)
 
@@ -59,7 +58,9 @@ def load_database(
                 item["category"] = category
                 item["category_id"] = int(i)
                 db.setCollection("candies")
-                db.post(item)
+
+                if not db.get({"id": item["id"]}):
+                    db.post(item)
         db.setCollection("categories")
         db.post(summary)
         i += 1
