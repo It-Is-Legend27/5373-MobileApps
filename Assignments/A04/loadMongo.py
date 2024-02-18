@@ -7,11 +7,10 @@ from mongoManager import MongoManager
 import json
 import glob
 from rich import print
-import sys
+from dotenv import load_dotenv
 import os
 
-
-def load(
+def load_database(
     folder_path: str = "./",
     username: str = None,
     password: str = None,
@@ -43,26 +42,22 @@ def load(
     i = 0
 
     for file in json_files:
-
-        print(file)
         parts = file.split("/")
         category = parts[-1][:-5].replace("-", " ").title()
 
-        print(category)
-
-        summary = {}
+        summary:dict = {}
 
         with open(file) as f:
-            data = json.load(f)
+            data:dict = json.load(f)
 
             summary["count"] = len(data)
             summary["name"] = category
-            summary["id"] = i
+            summary["id"] = int(i)
 
             for id, item in data.items():
+                item["id"] = int(id)
                 item["category"] = category
-                item["category_id"] = i
-                print(item)
+                item["category_id"] = int(i)
                 db.setCollection("candies")
                 db.post(item)
         db.setCollection("categories")
@@ -71,11 +66,18 @@ def load(
 
 
 if __name__ == "__main__":
+    
+    ENV_PATH:str = "./.env"
+
+    load_dotenv(ENV_PATH)
+
+    username:str = os.environ.get("CANDY_STORE_USER")
+    password:str = os.environ.get("CANDY_STORE_PASSWORD")
 
     kwargs = {
-        "folder_path": "./Assignments/A04/categoryJson",
-        "username": "angel",
-        "password": "aB_1618401m",
+        "folder_path": "./categoryJson",
+        "username": username,
+        "password": password,
         "database": "candy_store",
         "candy_collection": "candies",
         "categories_collection": "categories",
@@ -83,4 +85,4 @@ if __name__ == "__main__":
         "host": "localhost",
     }
 
-    load(**kwargs)
+    load_database(**kwargs)

@@ -1,7 +1,16 @@
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.database import Database
 from pymongo.collection import Collection
-from pymongo.errors import PyMongoError, ConnectionFailure
+from pymongo.cursor import Cursor
+from pymongo.results import (
+    InsertOneResult,
+    InsertManyResult,
+    DeleteResult,
+    UpdateResult,
+    BulkWriteResult,
+    UpdateResult,
+)
+from pymongo.errors import PyMongoError, ConnectionFailure, InvalidOperation
 from rich import print
 from rich.console import Console
 from rich.traceback import install
@@ -9,25 +18,10 @@ import re
 import sys
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
-
-
-def is_valid_object_id(id_str):
-    try:
-        # Attempt to convert the string to an ObjectId
-        obj_id = ObjectId(id_str)
-        # If the above line doesn't raise an exception, the id_str is a valid ObjectId
-        return True
-    except InvalidId:
-        # If an InvalidId exception is caught, the id_str is not a valid ObjectId
-        return False
-
-
-# Set up Rich to pretty-print tracebacks
-install()
+from bson.son import SON
 
 
 class MongoManager:
-
     def __init__(
         self,
         username: str = None,
@@ -41,8 +35,8 @@ class MongoManager:
         self.password: str = password
         self.host: str = host
         self.port: int = port
-        self.database: str = database
-        self.collection: str = collection
+        self.database: Database = None
+        self.collection: Collection = None
         self.connection_url: str = None
         self.client: MongoClient = None
 
@@ -57,72 +51,43 @@ class MongoManager:
             self.client = MongoClient(self.connection_url)
             # The ismaster command is cheap and does not require auth.
             self.client.admin.command("ismaster")
-        except ConnectionFailure:
-            print("Server not available")
+        except ConnectionFailure as e:
+            print(f"Error: {e}")
 
         # if a db is specified then make connection
-        if self.database is not None:
-            self.setDb(self.database)
+        if database is not None:
+            self.setDb(database)
 
             # if db is specified then check for collection as well
-            if self.collection is not None:
-                self.collection = self.database[self.collection]
+            if collection is not None:
+                self.collection = self.database[collection]
 
     def __str__(self):
-        return f"url: {self.connection_url}"
+        return self.database.name
 
-    def setDb(self, db_name:str):
+    def setDb(self, database: str):
         """Sets the current database."""
-        if db_name in self.client.list_database_names():
-            self.database = self.client[db_name]
-        else:
-            print(f"Database {db_name} does not exist. Creating {db_name}.")
-            self.database = self.client[db_name]
+        self.database = self.client[database]
 
-    def setCollection(self, collection_name:str):
+    def setCollection(self, collection: str):
         """Sets the current collection."""
-        if self.database is not None:  # Corrected the check here
-            if collection_name in self.database.list_collection_names():
-                self.collection = self.database[collection_name]
-                print(f"Collection set to {collection_name}")
-            else:
-                print(
-                    f"Collection {collection_name} does not exist. Creating {collection_name}."
-                )
-                self.collection = self.database[collection_name]
-        else:
-            print("No database selected. Use set_database() first.")
+        self.collection = self.database[collection]
 
-    def dropCollection(self, collection_name:str):
-        """Deletes a collection from the current database."""
-        if self.database is not None:  # Corrected the check here
-            if collection_name in self.database.list_collection_names():
-                self.database.drop_collection(collection_name)
-                print(f"Collection {collection_name} deleted.")
-            else:
-                print(f"Collection {collection_name} does not exist.")
-        else:
-            print("No database selected. Use set_database() first.")
+    def dropCollection(self, collection: str):
+        self.database.drop_collection(collection)
 
-    def dropDb(self, db_name:str):
+    def dropDb(self, database: str):
         """Deletes a database."""
-        if db_name in self.client.list_database_names():
-            self.client.drop_database(db_name)
-            print(f"Database {db_name} deleted.")
-            if (
-                self.database is not None and self.database.name == db_name
-            ):  # Corrected the check here
-                self.database = None
-                self.collection = None
-        else:
-            print(f"Database {db_name} does not exist.")
+        self.client.drop_database(database)
 
-    def get(self, 
-            query:dict = {},
-            skip:int = 0,
-            limit:int = 0,
-            sort: list[tuple] = [("id", 1)],
-            ):
+    def get(
+        self,
+        query: dict = {},
+        filter: dict = {"_id": 0},
+        skip: int = 0,
+        limit: int = 0,
+        sort: list[tuple] = [("id", 1)],
+    ) -> list[dict]:
         """
         Retrieves documents from the collection based on the provided criteria.
 
@@ -133,48 +98,26 @@ class MongoManager:
         :return: Dictionary with the operation's success status, result size, and data.
         """
 
-        try:
-            results = (
-                self.collection.find(query).sort(sort).skip(skip).limit(limit)
-            )
-            resultList:list = list(results)
-            return {"result_size": len(resultList), "data": resultList}
-        except PyMongoError as e:
-            return {
-                "error": str(
-                    e
-                ),  # It's often a good idea to convert exceptions to strings for readability
-            }
+        results: Cursor = self.collection.find(query, filter).sort(sort).skip(skip).limit(limit)
+        return list(results)
 
-    def post(self, document):
-        print(type(document))
-        # Implement the logic to insert data
+    def post(self, document: list[dict] | dict) -> dict:
         if isinstance(document, dict):
-            self.collection.insert_one(document)
+            result: InsertOneResult = self.collection.insert_one(document)
+            return {
+                "acknowledged": result.acknowledged,
+                "inserted_ids": result.inserted_id,
+            }
         elif isinstance(document, list):
-            self.collection.insert_many(document)
+            results: InsertManyResult = self.collection.insert_many(document)
+            return {
+                "acknowledged": results.acknowledged,
+                "inserted_ids": results.inserted_ids,
+            }
+        else:
+            raise PyMongoError(message="Invalid document")
 
-    def put(self, filter_query, update_data, upsert=False):
-        """
-        Updates documents in the collection based on the provided criteria.
-
-        :param filter_query: Dictionary specifying the criteria to select documents to update.
-        :param update_data: Dictionary specifying the update operations to be applied to the documents.
-        :param upsert: If True, a new document is inserted if no document matches the filter_query.
-        :return: Result of the update operation.
-        """
-        if not self.collection:
-            raise ValueError("Collection not set.")
-
-        # MongoDB requires update operations to be prefixed with operators like '$set', '$unset', etc.
-        # Ensure update_data is structured properly or wrap it with '$set' if it's a direct field update.
-        if not any(key.startswith("$") for key in update_data.keys()):
-            update_data = {"$set": update_data}
-
-        result = self.collection.update_many(filter_query, update_data, upsert=upsert)
-        return result
-
-    def put2(self, id_key, id_val, update_key, update_value):
+    def put(self, id_key: str, id_val: str, update_key: str, update_value: str) -> dict:
         """
         Updates the price of a specific item in the collection.
 
@@ -182,25 +125,37 @@ class MongoManager:
         :param new_price: The new price to set.
         :return: Result of the update operation.
         """
-        if id_key == "_id" and is_valid_object_id(id_val):
+        if id_key == "_id" and MongoManager.is_valid_object_id(id_val):
             # Convert string ID to ObjectId
             id_val = ObjectId(id_val)
 
         # Perform the update
-        result = self.collection.update_one(
+        result: UpdateResult = self.collection.update_one(
             {id_key: id_val},  # Query to match the document
             {"$set": {update_key: update_value}},  # Update operation
         )
 
-        # Check if the update was successful
-        if result.matched_count > 0:
-            return {"success": True, "updated_count": result.modified_count}
-        else:
-            return {"success": False, "message": "No matching document found."}
+        return {
+            "acknowledged": result.acknowledged,
+            "matched_count": result.matched_count,
+            "modified_count": result.modified_count,
+            "raw_result": result.raw_result,
+            "upserted_id": result.upserted_id,
+        }
 
-    def delete(self, query):
-        # Implement the logic to delete data based on the query
-        pass
+    def delete(self, query: dict) -> dict:
+        result: DeleteResult = self.collection.delete_one(query)
+        return {
+            "acknowledged": result.acknowledged,
+            "deleted_count": result.deleted_count,
+            "raw_result": result.raw_result,
+        }
+
+    def close(self) -> None:
+        self.client.close()
+
+    def is_valid_object_id(id_str: str) -> bool:
+        return ObjectId.is_valid(id_str)
 
 
 if __name__ == "__main__":
@@ -277,7 +232,7 @@ if __name__ == "__main__":
     elif query == "7":
         # original 49.99
         mm.setCollection("candies")
-        print(mm.put2("id", "42688432308411", "price", 9.99))
+        print(mm.put("id", "42688432308411", "price", 9.99))
 
     elif query == "8":
         # client = MongoClient()
