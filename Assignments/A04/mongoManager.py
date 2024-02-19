@@ -12,10 +12,6 @@ from pymongo.results import (
 )
 from pymongo.errors import PyMongoError, ConnectionFailure, InvalidOperation
 from rich import print
-from rich.console import Console
-from rich.traceback import install
-import re
-import sys
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
 from bson.son import SON
@@ -31,26 +27,25 @@ class MongoManager:
         database: str = None,
         collection: str = None,
     ) -> None:
-        self.username: str = username
-        self.password: str = password
         self.host: str = host
         self.port: int = port
         self.database: Database = None
         self.collection: Collection = None
-        self.connection_url: str = None
         self.client: MongoClient = None
+        connection_url: str = None
 
-        if self.username is None and self.password is None:
-            self.connection_url = f"mongodb://{self.host}:{self.port}/"
+        if username is None or password is None:
+            connection_url: str = f"mongodb://{self.host}:{self.port}/"
         else:
             # Need to check that a db name was passed in
             # Create the connection URL
-            self.connection_url = f"mongodb://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}?authSource=admin"
-
+            connection_url: str = (
+                f"mongodb://{username}:{password}@{self.host}:{self.port}/{self.database}?authSource=admin"
+            )
         try:
-            self.client = MongoClient(self.connection_url)
+            self.client = MongoClient(connection_url)
             # The ismaster command is cheap and does not require auth.
-            self.client.admin.command("ismaster")
+            self.client["admin"].command("ismaster")
         except ConnectionFailure as e:
             print(f"Error: {e}")
 
@@ -62,10 +57,10 @@ class MongoManager:
             if collection is not None:
                 self.collection = self.database[collection]
 
-    def __str__(self):
-        return self.database.name
+    def __repr__(self) -> str:
+        return f"MongoManager(host= '{self.host}', port= {self.port})"
 
-    def setDb(self, database: str):
+    def setDb(self, database: str) -> None:
         """Sets the current database."""
         self.database = self.client[database]
 
@@ -160,113 +155,3 @@ class MongoManager:
 
     def is_valid_object_id(id_str: str) -> bool:
         return ObjectId.is_valid(id_str)
-
-
-if __name__ == "__main__":
-
-    # info = {
-    #     "username": "mongomin",
-    #     "password": "horsedonkeyblanketbattery",
-    #     "host": "localhost",
-    #     "port": "27017",
-    #     "db_name": "candy_store",
-    #     "collection_name": "candies",
-    # }
-
-    query = sys.argv[1]
-
-    mm = MongoManager()
-
-    mm.setDb("candy_store")
-
-    if query == "1":
-        # Get all categories sorted ascending by name
-        mm.setCollection("categories")
-
-        categories = mm.get(sort_criteria=[("name", -1)], filter={"_id": 0, "count": 1})
-
-        print(categories)
-    elif query == "2":
-        # Get candies sorted ascending by category and desc by price and filter to only see price, category, and name
-        mm.setCollection("candies")
-
-        candies = mm.get(
-            sort_criteria=[("category", 1), ("price", -1)],
-            filter={"_id": 0, "price": 1, "category": 1},
-        )
-
-        print(candies)
-    elif query == "3":
-        mm.setCollection("candies")
-        regex_query = {
-            "name": {"$regex": "crows", "$options": "i"}
-        }  # '$options': 'i' makes it case-insensitive
-
-        sourCandies = mm.get(
-            query=regex_query,
-            # filter={"_id":0,"name":1},
-            sort_criteria=[("name", 1)],
-        )
-        print(sourCandies)
-        print(len(sourCandies["data"]))
-
-    elif query == "4":
-        mm.setCollection("candies")
-        sourCandies = mm.get(
-            query={"category_id": 12},
-            filter={"_id": 0, "price": 1, "category_id": 1, "name": 1},
-        )
-        print(sourCandies)
-        print(len(sourCandies["data"]))
-
-    elif query == "5":
-        price_range_query = {"price": {"$gte": 100.00, "$lte": 150.00}}
-        mm.setCollection("candies")
-        rangeQuery = mm.get(
-            query=price_range_query,
-            filter={"_id": 0, "price": 1, "category_id": 1, "name": 1},
-            sort_criteria={"price": -1},
-        )
-        print(rangeQuery)
-        print(len(rangeQuery["data"]))
-    elif query == "6":
-        # original 49.99
-        mm.setCollection("candies")
-        print(mm.get(query={"id": "42688432308411"}))
-    elif query == "7":
-        # original 49.99
-        mm.setCollection("candies")
-        print(mm.put("id", "42688432308411", "price", 9.99))
-
-    elif query == "8":
-        # client = MongoClient()
-        # db = client['candy_store']
-        # collection = db['candies']
-
-        # results = collection.find({'category_id':30},{'_id':0,"name":1,'price':1})
-        # print(list(results))
-
-        mm.setCollection("candies")
-        for i in range(10):
-            result = mm.get(
-                sort_criteria=[("name", 1)],
-                skip=(i * 3),
-                limit=3,
-                filter={"_id": 0, "name": 1},
-            )
-            print(result)
-            print("=" * 30)
-    elif query == "9":
-        mm.setCollection("candies")
-        result = mm.get(sort_criteria=[("name", 1)], filter={"_id": 0, "name": 1})
-        print(result)
-    elif query == "10":
-        mm.setCollection("categories")
-        doc = {
-            "count": 23,
-            "name": "Dirt Candy",
-            "tast": "awesome",
-            "color": "pink",
-            "price": 99999.99,
-        }
-        mm.post(doc)

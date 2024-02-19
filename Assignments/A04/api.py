@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 import requests
 
+
 class Candy(BaseModel):
     id: int
     name: str
@@ -26,7 +27,12 @@ class Candy(BaseModel):
     category_id: int
 
 
-tags_metadata:list[dict[str,str]] = [
+class Category(BaseModel):
+    name: str
+    id: int
+
+
+tags_metadata: list[dict[str, str]] = [
     {
         "name": "/",
         "description": "Redirects to the docs.",
@@ -39,10 +45,7 @@ tags_metadata:list[dict[str,str]] = [
         "name": "Categories",
         "description": "Operations with categories.",
     },
-    {
-        "name": "Images",
-        "description": "Retrieves image of candy by ID"
-    }
+    {"name": "Images", "description": "Retrieves image of candy by ID"},
 ]
 
 ENV_PATH: str = "./.env"
@@ -113,16 +116,6 @@ async def docs_redirect():
     return RedirectResponse(url="/docs")
 
 
-# @app.get("/candies", tags=["Candies"])
-# async def all_candies():
-#     """
-#     Retrieve a list of all candies available in the store.
-#     """
-#     candy_store_db.setCollection("candies")
-#     candy_list: list[dict] = candy_store_db.get({}, {"_id": 0})
-#     return {"candies": candy_list}
-
-
 @app.get("/candies", tags=["Candies"])
 def search_candies(
     id: int = Query(None, description="ID of a candy", ge=0),
@@ -141,7 +134,7 @@ def search_candies(
     category_id: int = Query(None, description="Category id of candy", ge=0),
     skip: int = Query(0, description="Numer of items to skip", ge=0),
     limit: int = Query(0, description="Limits the number of items to return"),
-)->dict:
+) -> dict:
     """
     Search for candies based on a query string (e.g., name, category, flavor).
     """
@@ -186,38 +179,39 @@ async def candy_image(
     candy_id: int = Path(..., description="The ID of the candy to retrieve", ge=0)
 ):
     candy_list: list[dict] = list(candy_store_db.get({"id": candy_id}))
-    
+
     if not candy_list:
         return None
-    
-    img_url:str = candy_list[0]["img_url"]
-    file_name:str = candy_list[0]["id"]
+
+    img_url: str = candy_list[0]["img_url"]
+    file_name: str = candy_list[0]["id"]
     image_response: requests.Response = requests.get(img_url)
-    headers={"Content-Language":"English" ,"Content-Type": "image/jpg"
-    }
-    headers["Content-Disposition"]= f"attachment;filename={file_name}.jpg"
+    headers = {"Content-Language": "English", "Content-Type": "image/jpg"}
+    headers["Content-Disposition"] = f"attachment;filename={file_name}.jpg"
     return Response(image_response.content, media_type="image/jpg")
 
-    
-@app.post("/candies")
+
+@app.post("/candies", tags=["Candies"])
 def add_new_candy(
-    candy_info:Candy = Body(description="For inserting a candy record into the database")
+    candy_info: Candy = Body(
+        description="For inserting a candy record into the database"
+    ),
 ):
     """
     Add a new candy to the store's inventory.
     """
     candy_store_db.setCollection("candies")
 
-    candy:list[dict] = candy_store_db.get({"id": candy_info.id})
+    candy: list[dict] = candy_store_db.get({"id": candy_info.id})
 
     # If existing candy, do nothing
     if candy:
-        return None
-    
+        return {"acknowledge": False, "inserted_ids": []}
+
     candy_store_db.setCollection("categories")
-    
-    c_id:list[dict] = candy_store_db.get({"id": candy_info.category_id}, {"_id": 1})
-    c_name:list[dict] = candy_store_db.get({"name": candy_info.category}, {"_id": 1})
+
+    c_id: list[dict] = candy_store_db.get({"id": candy_info.category_id}, {"_id": 1})
+    c_name: list[dict] = candy_store_db.get({"name": candy_info.category}, {"_id": 1})
 
     if c_id and c_name:
         # If existing category, just insert
@@ -225,25 +219,28 @@ def add_new_candy(
             candy_store_db.setCollection("candies")
             result = candy_store_db.post(dict(candy_info))
             return result
-        # If _id do not match, do nothing
+        # If _id do not match
         else:
-            return None
+            return {"acknowledge": False, "inserted_ids": []}
     # If one or other list is empty, do nothing
     elif (c_id and not c_name) or (not c_id and c_name):
-        return None
+        return {"acknowledge": False, "inserted_ids": []}
     # If not existing category, create new category
     # Then insert new candy
     else:
         candy_store_db.setCollection("candies")
-        candy_store_db.post(dict(candy_info))
+        result = candy_store_db.post(dict(candy_info))
 
         candy_store_db.setCollection("categories")
-        result = candy_store_db.post({"name": candy_info.category, "id": candy_info.category_id})
-        print(result)
+        tempRes = candy_store_db.post(
+            {"name": candy_info.category, "id": candy_info.category_id}
+        )
+
+        result["inserted_ids"] += tempRes["inserted_ids"]
         return result
 
 
-@app.put("/candies/id/{candy_id}")
+@app.put("/candies/id/{candy_id}", tags=["Candies"])
 def update_candy_info(candy_id: int):
     """
     Update information about an existing candy.
@@ -251,7 +248,7 @@ def update_candy_info(candy_id: int):
     pass
 
 
-@app.delete("/candies/id/{candy_id}")
+@app.delete("/candies/id/{candy_id}", tags=["Candies"])
 def delete_candy(candy_id: int):
     """
     Remove a candy from the store's inventory.
@@ -260,7 +257,8 @@ def delete_candy(candy_id: int):
     result = candy_store_db.delete({"id": candy_id})
     return result
 
-@app.get("/categories")
+
+@app.get("/categories", tags=["Categories"])
 def all_categories():
     """
     Get a list of all candy category information.
@@ -270,7 +268,37 @@ def all_categories():
     return {"categories": category_list}
 
 
-@app.get("/categories/id/{category_id}")
+@app.post("/categories", tags=["Categories"])
+def add_new_category(
+    category: Category = Body(
+        description="For inserting a new category into the database"
+    ),
+):
+    """
+    Insert a new category into the database.
+    """
+    candy_store_db.setCollection("categories")
+    c_id: list[dict] = candy_store_db.get({"id": category.id}, {"_id": 1})
+    c_name: list[dict] = candy_store_db.get({"id": category.id}, {"_id": 1})
+
+    if c_id and c_name:
+        # If existing category
+        if c_id[0]["_id"] == c_name[0]["_id"]:
+            return {"acknowledge": False, "inserted_ids": []}
+        # If _id do not match, return None
+        else:
+            return {"acknowledge": False, "inserted_ids": []}
+    # If one or other list is empty, do nothing
+    elif (c_id and not c_name) or (not c_id and c_name):
+        return {"acknowledge": False, "inserted_ids": []}
+    # If not existing category, create new category
+    # Then insert new category
+    else:
+        result = candy_store_db.post({"name": category.name, "id": category.name})
+        return result
+
+
+@app.get("/categories/id/{category_id}", tags=["Categories"])
 def category_by_id(
     category_id: int = Path(
         ..., description="The ID of the category information to retrieve"
@@ -284,20 +312,6 @@ def category_by_id(
     return {"categories": category_list}
 
 
-"""
-This main block gets run when you invoke this file. How do you invoke this file?
-
-        python api.py 
-
-After it is running, copy paste this into a browser: http://127.0.0.1:8080 
-
-You should see your api's base route!
-
-Note:
-    Notice the first param below: api:app 
-    The left side (api) is the name of this file (api.py without the extension)
-    The right side (app) is the bearingiable name of the FastApi instance declared at the top of the file.
-"""
 if __name__ == "__main__":
     uvicorn.run(
         "api:app",
@@ -307,5 +321,5 @@ if __name__ == "__main__":
         reload=True,
         ssl_certfile="/home/angel/thehonoredone_certs/thehonoredone.live.crt",
         ssl_keyfile="/home/angel/thehonoredone_certs/thehonoredone.live.key",
-        ssl_ca_certs="/home/angel/thehonoredone_certs/intermediate.crt"
+        ssl_ca_certs="/home/angel/thehonoredone_certs/intermediate.crt",
     )
