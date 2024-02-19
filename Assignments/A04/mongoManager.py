@@ -116,7 +116,7 @@ class MongoManager:
         else:
             raise PyMongoError(message="Invalid document")
 
-    def put(self, id_key: str, id_val: str, update_key: str, update_value: str) -> dict:
+    def put(self, id_key: str, id_val: str | int, update_dict:dict[str]) -> dict:
         """
         Updates the price of a specific item in the collection.
 
@@ -131,7 +131,7 @@ class MongoManager:
         # Perform the update
         result: UpdateResult = self.collection.update_one(
             {id_key: id_val},  # Query to match the document
-            {"$set": {update_key: update_value}},  # Update operation
+            {"$set": update_dict},  # Update operation
         )
 
         return {

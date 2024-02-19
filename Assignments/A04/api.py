@@ -7,29 +7,26 @@ from mongoManager import MongoManager
 from contextlib import asynccontextmanager
 import uvicorn
 import json
-import ssl
 import os
-import sys
 from rich import print
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import requests
 
 
 class Candy(BaseModel):
-    id: int
-    name: str
-    prod_url: str
-    img_url: str
-    price: float
-    desc: str
-    category: str
-    category_id: int
-
+    id: int = Field(description="The ID of a candy.")
+    name: str = Field(None, description="The name of a candy.")
+    prod_url: str = Field(None, description="The product url of a candy.")
+    img_url: str = Field(None, description="The image url of a candy.")
+    price: float = Field(None, description="The price of a candy.")
+    desc: str = Field(None, description="The description of a candy.")
+    category: str = Field(None, description="The category name of a candy.")
+    category_id: int = Field(None, description="The category ID of a candy.")
 
 class Category(BaseModel):
-    name: str
-    id: int
+    name: str = Field(description="The name of a category.")
+    id: int = Field(description="The ID of a category.")
 
 
 tags_metadata: list[dict[str, str]] = [
@@ -58,6 +55,8 @@ SUMMARY: str = "Candy Store™️👌"
 DESCRIPTION: str = """
 # WE HAVE THE CANDIES
 This API returns candy store stuff. **Enough said**.
+<br>
+![candy](./static/candy_face.gif)
 """
 candy_store_db: MongoManager = None
 
@@ -170,6 +169,7 @@ def candy_by_id(
     """
     Get detailed information about a specific candy.
     """
+    candy_store_db.setCollection("candies")
     candy_list: list[dict] = list(candy_store_db.get({"id": candy_id}))
     return {"candies": candy_list}
 
@@ -178,6 +178,7 @@ def candy_by_id(
 async def candy_image(
     candy_id: int = Path(..., description="The ID of the candy to retrieve", ge=0)
 ):
+    candy_store_db.setCollection("candies")
     candy_list: list[dict] = list(candy_store_db.get({"id": candy_id}))
 
     if not candy_list:
@@ -240,12 +241,27 @@ def add_new_candy(
         return result
 
 
-@app.put("/candies/id/{candy_id}", tags=["Candies"])
-def update_candy_info(candy_id: int):
+@app.put("/candies", tags=["Candies"])
+def update_candy_info(
+    candy_info:Candy = Body(description="For updating the information of a candy.")
+):
     """
     Update information about an existing candy.
     """
-    pass
+    candy_store_db.setCollection("candies")
+
+    query:dict = {}
+
+    for key,val in dict(candy_info).items():
+        if key == "id":
+            continue
+        if not val is None:
+            query[key] = val
+
+    
+    result:dict = candy_store_db.put("id", candy_info.id, query)
+
+    return result
 
 
 @app.delete("/candies/id/{candy_id}", tags=["Candies"])
