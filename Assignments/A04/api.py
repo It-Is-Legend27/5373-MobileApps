@@ -24,6 +24,7 @@ class Candy(BaseModel):
     category: str = Field(None, description="The category name of a candy.")
     category_id: int = Field(None, description="The category ID of a candy.")
 
+
 class Category(BaseModel):
     name: str = Field(description="The name of a category.")
     id: int = Field(description="The ID of a category.")
@@ -98,14 +99,6 @@ app: FastAPI = FastAPI(
     },
 )
 app.mount("/static", StaticFiles(directory="static"), name="static")
-# Needed for CORS
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=origins,
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
 
 
 # Routes
@@ -243,23 +236,22 @@ def add_new_candy(
 
 @app.put("/candies", tags=["Candies"])
 def update_candy_info(
-    candy_info:Candy = Body(description="For updating the information of a candy.")
+    candy_info: Candy = Body(description="For updating the information of a candy."),
 ):
     """
     Update information about an existing candy.
     """
     candy_store_db.setCollection("candies")
 
-    query:dict = {}
+    query: dict = {}
 
-    for key,val in dict(candy_info).items():
+    for key, val in dict(candy_info).items():
         if key == "id":
             continue
         if not val is None:
             query[key] = val
 
-    
-    result:dict = candy_store_db.put("id", candy_info.id, query)
+    result: dict = candy_store_db.put("id", candy_info.id, query)
 
     return result
 
