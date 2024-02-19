@@ -188,7 +188,7 @@ async def candy_image(
     image_response: requests.Response = requests.get(img_url)
     headers = {"Content-Language": "English", "Content-Type": "image/jpg"}
     headers["Content-Disposition"] = f"attachment;filename={file_name}.jpg"
-    return Response(image_response.content, media_type="image/jpg")
+    return Response(image_response.content, media_type="image/jpg", headers=headers)
 
 
 @app.post("/candies", tags=["Candies"])
