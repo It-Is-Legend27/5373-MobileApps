@@ -19,10 +19,16 @@ from pydantic import BaseModel, Field
 import requests
 
 
+# ██████   █████  ███████ ███████     ███    ███  ██████  ██████  ███████ ██      ███████
+# ██   ██ ██   ██ ██      ██          ████  ████ ██    ██ ██   ██ ██      ██      ██
+# ██████  ███████ ███████ █████       ██ ████ ██ ██    ██ ██   ██ █████   ██      ███████
+# ██   ██ ██   ██      ██ ██          ██  ██  ██ ██    ██ ██   ██ ██      ██           ██
+# ██████  ██   ██ ███████ ███████     ██      ██  ██████  ██████  ███████ ███████ ███████
 class Candy(BaseModel):
     """
     Provides JSON-schema for a "candy" object / entry.
     """
+
     id: int = Field(description="The ID of a candy.")
     name: str = Field(None, description="The name of a candy.")
     prod_url: str = Field(None, description="The product url of a candy.")
@@ -37,6 +43,7 @@ class Category(BaseModel):
     """
     Provides JSON-schema for a "category" object / entry.
     """
+
     name: str = Field(description="The name of a category.")
     id: int = Field(description="The ID of a category.")
 
@@ -74,8 +81,17 @@ This API returns candy store stuff. **Enough said**.
 candy_store_db: MongoManager = None
 
 
+# ██      ██ ███████ ███████ ███████ ██████   █████  ███    ██     ███████ ██    ██ ███████ ███    ██ ████████
+# ██      ██ ██      ██      ██      ██   ██ ██   ██ ████   ██     ██      ██    ██ ██      ████   ██    ██
+# ██      ██ █████   █████   ███████ ██████  ███████ ██ ██  ██     █████   ██    ██ █████   ██ ██  ██    ██
+# ██      ██ ██      ██           ██ ██      ██   ██ ██  ██ ██     ██       ██  ██  ██      ██  ██ ██    ██
+# ███████ ██ ██      ███████ ███████ ██      ██   ██ ██   ████     ███████   ████   ███████ ██   ████    ██
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """
+    Opens connection to databse on startup.
+    Close connection on shutdown.
+    """
     load_dotenv(ENV_PATH)
     candy_user: str = os.environ.get("CANDY_STORE_USER")
     candy_store_password = os.environ.get("CANDY_STORE_PASSWORD")
@@ -88,6 +104,11 @@ async def lifespan(app: FastAPI):
     candy_store_db.close()
 
 
+# ███████  █████  ███████ ████████  █████  ██████  ██
+# ██      ██   ██ ██         ██    ██   ██ ██   ██ ██
+# █████   ███████ ███████    ██    ███████ ██████  ██
+# ██      ██   ██      ██    ██    ██   ██ ██      ██
+# ██      ██   ██ ███████    ██    ██   ██ ██      ██
 app: FastAPI = FastAPI(
     lifespan=lifespan,
     openapi_tags=TAGS_METADATA,
@@ -107,10 +128,15 @@ app: FastAPI = FastAPI(
         "url": "https://www.apache.org/licenses/LICENSE-2.0.html",
     },
 )
+# Specifying directory for static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# Routes
+# ██████   ██████  ██    ██ ████████ ███████ ███████
+# ██   ██ ██    ██ ██    ██    ██    ██      ██
+# ██████  ██    ██ ██    ██    ██    █████   ███████
+# ██   ██ ██    ██ ██    ██    ██    ██           ██
+# ██   ██  ██████   ██████     ██    ███████ ███████
 @app.get("/", tags=["/"])
 async def docs_redirect():
     """Api's base route that displays the information created above in the ApiInfo section."""
@@ -350,6 +376,8 @@ def category_by_id(
 
 
 if __name__ == "__main__":
+    load_dotenv(ENV_PATH)
+
     HOST: str = "0.0.0"
     PORT: int = 8084
     ssl_certfile: str = os.environ.get("SSL_CERTFILE")
