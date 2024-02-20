@@ -1,4 +1,8 @@
-# Libraries for FastAPI
+"""Candy Store API
+
+Candy Store API built with FastAPI.
+
+"""
 from fastapi import FastAPI, Query, Path, Body
 from fastapi.responses import RedirectResponse, FileResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -60,10 +64,6 @@ This API returns candy store stuff. **Enough said**.
 ![candy](./static/candy_face.gif)
 """
 candy_store_db: MongoManager = None
-
-# Needed for CORS
-# origins = ["*"]
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
