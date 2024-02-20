@@ -3,6 +3,7 @@
 Candy Store API built with FastAPI.
 
 """
+
 from fastapi import FastAPI, Query, Path, Body
 from fastapi.responses import RedirectResponse, FileResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,9 @@ import requests
 
 
 class Candy(BaseModel):
+    """
+    Provides JSON-schema for a "candy" object / entry.
+    """
     id: int = Field(description="The ID of a candy.")
     name: str = Field(None, description="The name of a candy.")
     prod_url: str = Field(None, description="The product url of a candy.")
@@ -30,11 +34,14 @@ class Candy(BaseModel):
 
 
 class Category(BaseModel):
+    """
+    Provides JSON-schema for a "category" object / entry.
+    """
     name: str = Field(description="The name of a category.")
     id: int = Field(description="The ID of a category.")
 
 
-tags_metadata: list[dict[str, str]] = [
+TAGS_METADATA: list[dict[str, str]] = [
     {
         "name": "/",
         "description": "Redirects to the docs.",
@@ -47,13 +54,14 @@ tags_metadata: list[dict[str, str]] = [
         "name": "Categories",
         "description": "Operations with categories.",
     },
-    {"name": "Images", "description": "Retrieves image of candy by ID"},
+    {
+        "name": "Images",
+        "description": "Retrieves image of candy by ID.",
+    },
 ]
 
 ENV_PATH: str = "./.env"
 TITLE: str = "Candy Store™️"
-HOST: str = "0.0.0"
-PORT: int = 8084
 ROOT_PATH: str = ""
 DOCS_URL: str = "/docs"
 SUMMARY: str = "Candy Store™️👌"
@@ -65,15 +73,16 @@ This API returns candy store stuff. **Enough said**.
 """
 candy_store_db: MongoManager = None
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_dotenv(ENV_PATH)
-    CANDY_USER: str = os.environ.get("CANDY_STORE_USER")
-    CANDY_STORE_PASSWORD = os.environ.get("CANDY_STORE_PASSWORD")
+    candy_user: str = os.environ.get("CANDY_STORE_USER")
+    candy_store_password = os.environ.get("CANDY_STORE_PASSWORD")
 
     global candy_store_db
     candy_store_db = MongoManager(
-        CANDY_USER, CANDY_STORE_PASSWORD, database="candy_store", collection="candies"
+        candy_user, candy_store_password, database="candy_store", collection="candies"
     )
     yield
     candy_store_db.close()
@@ -81,7 +90,7 @@ async def lifespan(app: FastAPI):
 
 app: FastAPI = FastAPI(
     lifespan=lifespan,
-    openapi_tags=tags_metadata,
+    openapi_tags=TAGS_METADATA,
     title=TITLE,
     root_path=ROOT_PATH,
     docs_url=DOCS_URL,
@@ -124,7 +133,7 @@ def search_candies(
     ),
     category: str = Query(None, description="Category of candy"),
     category_id: int = Query(None, description="Category id of candy", ge=0),
-    skip: int = Query(0, description="Numer of items to skip", ge=0),
+    skip: int = Query(0, description="Number of items to skip", ge=0),
     limit: int = Query(0, description="Limits the number of items to return"),
 ) -> dict:
     """
@@ -147,6 +156,26 @@ def search_candies(
 
     if max_price == None or min_price <= max_price:
         query["price"] = {"$gte": min_price, "$lte": max_price}
+
+    candy_list: list[dict] = candy_store_db.get(
+        query, {"_id": 0}, skip=skip, limit=limit
+    )
+
+    return {"candies": candy_list}
+
+
+@app.get("/candies/category/{category_id}", tags=["Candies"])
+def candy_by_category(
+    category_id: int = Path(description="Category id of candy", ge=0),
+    skip: int = Query(0, description="Number of items to skip", ge=0),
+    limit: int = Query(0, description="Limits the number of items to return"),
+) -> dict:
+    """
+    Get detailed information about candies in a category by category ID.
+    """
+    candy_store_db.setCollection("candies")
+
+    query: dict = {"category_id": category_id}
 
     candy_list: list[dict] = candy_store_db.get(
         query, {"_id": 0}, skip=skip, limit=limit
@@ -321,13 +350,19 @@ def category_by_id(
 
 
 if __name__ == "__main__":
+    HOST: str = "0.0.0"
+    PORT: int = 8084
+    ssl_certfile: str = os.environ.get("SSL_CERTFILE")
+    ssl_keyfile: str = os.environ.get("SSL_KEYFILE")
+    ssl_ca_certs: str = os.environ.get("SSL_CA_CERTS")
+
     uvicorn.run(
         "api:app",
         host=HOST,
         port=PORT,
         log_level="debug",
         reload=True,
-        ssl_certfile="/home/angel/thehonoredone_certs/thehonoredone.live.crt",
-        ssl_keyfile="/home/angel/thehonoredone_certs/thehonoredone.live.key",
-        ssl_ca_certs="/home/angel/thehonoredone_certs/intermediate.crt",
+        ssl_certfile=ssl_certfile,
+        ssl_keyfile=ssl_keyfile,
+        ssl_ca_certs=ssl_ca_certs,
     )
