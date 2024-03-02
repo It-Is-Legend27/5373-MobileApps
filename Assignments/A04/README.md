@@ -16,20 +16,27 @@ This API provides routes for querying a MongoDB for candy store records. These r
 | 4 | [/categoryJson](./categoryJson)        | Contains JSON files with candy information.             |
 | 5 | [requirements.txt](./requirements.txt) | Lists all the required packages needed for the project. |
 | 6 | [/static](./static)                    | Contains static files used in the API.                  |
+| 7 | [test.py](./test.py)                   | Tests API Routes                                        |
 
 ### Instructions
 
 - First, login to the server via SSH.
 - Next, change the directory like so:
+
 ```
   cd /root/A04
-  ```
+```
+
 - Start the virtual environment:
+
 ```
 source .venv/bin/activate
 ```
+
 - Run the script:
+
 ```
 python api.py
 ```
+
 - Go to https://thehonoredone.live:8084
