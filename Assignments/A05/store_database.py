@@ -104,7 +104,15 @@ class StoreDatabase:
         results: Cursor = (
             self.collection.find(query, filter).sort(sort).skip(skip).limit(limit)
         )
-        return list(results)
+
+        items_list: list[dict] = []
+        for item in results:
+            fitem: dict = dict(item)
+            for key, value in fitem.items():
+                if isinstance(value, ObjectId):
+                    fitem.update({key: str(value)})
+            items_list.append(fitem)
+        return items_list
 
     def insert_one(self, document: dict) -> dict:
         result: InsertOneResult = self.collection.insert_one(document)

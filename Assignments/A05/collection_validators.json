@@ -9,8 +9,7 @@
                 "img_url",
                 "price",
                 "desc",
-                "category_name",
-                "category_id"
+                "category_name"
             ],
             "properties": {
                 "name": {
@@ -36,10 +35,6 @@
                 "category_name": {
                     "bsonType": "string",
                     "description": "'category_name' must be a string and is required"
-                },
-                "category_id": {
-                    "bsonType": "objectId",
-                    "description": "'category_id' must be an ObjectID and is required"
                 }
             }
         }

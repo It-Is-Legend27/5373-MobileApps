@@ -1,6 +1,6 @@
-"""Candy Store API
+"""item Store API
 
-Candy Store API built with FastAPI.
+item Store API built with FastAPI.
 
 """
 
@@ -8,7 +8,7 @@ from fastapi import FastAPI, Query, Path, Body
 from fastapi.responses import RedirectResponse, FileResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from Assignments.A05.store_database import StoreDatabase
+from store_database import StoreDatabase
 from contextlib import asynccontextmanager
 import uvicorn
 import json
@@ -17,6 +17,7 @@ from rich import print
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 import requests
+from models import Item, Category, User
 
 
 # ██████   █████  ███████ ███████     ███    ███  ██████  ██████  ███████ ██      ███████
@@ -24,28 +25,6 @@ import requests
 # ██████  ███████ ███████ █████       ██ ████ ██ ██    ██ ██   ██ █████   ██      ███████
 # ██   ██ ██   ██      ██ ██          ██  ██  ██ ██    ██ ██   ██ ██      ██           ██
 # ██████  ██   ██ ███████ ███████     ██      ██  ██████  ██████  ███████ ███████ ███████
-class Candy(BaseModel):
-    """
-    Provides JSON-schema for a "candy" object / entry.
-    """
-
-    id: int = Field(description="The ID of a candy.")
-    name: str = Field(None, description="The name of a candy.")
-    prod_url: str = Field(None, description="The product url of a candy.")
-    img_url: str = Field(None, description="The image url of a candy.")
-    price: float = Field(None, description="The price of a candy.")
-    desc: str = Field(None, description="The description of a candy.")
-    category: str = Field(None, description="The category name of a candy.")
-    category_id: int = Field(None, description="The category ID of a candy.")
-
-
-class Category(BaseModel):
-    """
-    Provides JSON-schema for a "category" object / entry.
-    """
-
-    name: str = Field(description="The name of a category.")
-    id: int = Field(description="The ID of a category.")
 
 
 TAGS_METADATA: list[dict[str, str]] = [
@@ -54,8 +33,8 @@ TAGS_METADATA: list[dict[str, str]] = [
         "description": "Redirects to the docs.",
     },
     {
-        "name": "Candies",
-        "description": "Operations with candies.",
+        "name": "Items",
+        "description": "Operations with items.",
     },
     {
         "name": "Categories",
@@ -63,22 +42,26 @@ TAGS_METADATA: list[dict[str, str]] = [
     },
     {
         "name": "Images",
-        "description": "Retrieves image of candy by ID.",
+        "description": "Retreiving images of items.",
+    },
+    {
+        "name": "Login and Registration",
+        "description": "Routes for login and registration.",
     },
 ]
 
 ENV_PATH: str = "./.env"
-TITLE: str = "Candy Store™️"
+TITLE: str = "Awesome Store™️"
 ROOT_PATH: str = ""
 DOCS_URL: str = "/docs"
-SUMMARY: str = "Candy Store™️👌"
+SUMMARY: str = "Awesome Store™️👌"
 DESCRIPTION: str = """
-# WE HAVE THE CANDIES
-This API returns candy store stuff. **Enough said**.
+# WE HAVE THE items
+This API returns awesome items. **Enough said**.
 <br>
-![candy](./static/candy_face.gif)
+![item](./static/store.gif)
 """
-candy_store_db: StoreDatabase = None
+awesome_store_db: StoreDatabase = None
 
 
 # ██      ██ ███████ ███████ ███████ ██████   █████  ███    ██     ███████ ██    ██ ███████ ███    ██ ████████
@@ -93,15 +76,15 @@ async def lifespan(app: FastAPI):
     Close connection on shutdown.
     """
     load_dotenv(ENV_PATH)
-    candy_user: str = os.environ.get("CANDY_STORE_USER")
-    candy_store_password = os.environ.get("CANDY_STORE_PASSWORD")
+    item_user: str = os.environ.get("STORE_USER")
+    item_store_password = os.environ.get("STORE_PASSWORD")
 
-    global candy_store_db
-    candy_store_db = StoreDatabase(
-        candy_user, candy_store_password, database="candy_store", collection="candies"
+    global awesome_store_db
+    awesome_store_db = StoreDatabase(
+        item_user, item_store_password, database="awesome_store", collection="items"
     )
     yield
-    candy_store_db.close()
+    awesome_store_db.close()
 
 
 # ███████  █████  ███████ ████████  █████  ██████  ██
@@ -139,38 +122,38 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # ██   ██  ██████   ██████     ██    ███████ ███████
 @app.get("/", tags=["/"])
 async def docs_redirect():
-    """Api's base route that displays the information created above in the ApiInfo section."""
+    """Api's base route that displays the information about the API."""
     return RedirectResponse(url="/docs")
 
 
-@app.get("/candies", tags=["Candies"])
-def search_candies(
-    id: int = Query(None, description="ID of a candy", ge=0),
-    name: str = Query(None, description="Keyword in name of a candy"),
-    desc: str = Query(None, description="Keyword in description of candy"),
+@app.get("/items", tags=["Items"])
+def search_items(
+    id: str = Query(None, description="ID of a item"),
+    name: str = Query(None, description="Keyword in name of a item"),
+    desc: str = Query(None, description="Keyword in description of item"),
     min_price: float = Query(
-        0, description="Lower bound for price range of candy", ge=0
+        0, description="Lower bound for price range of item", ge=0
     ),
     max_price: float = Query(
         1000000000000000,
-        description="Highest bound for price range of candy",
+        description="Highest bound for price range of item",
         ge=0,
         strict=False,
     ),
-    category: str = Query(None, description="Category of candy"),
-    category_id: int = Query(None, description="Category id of candy", ge=0),
+    category: str = Query(None, description="Category of item"),
+    category_id: str = Query(None, description="Category id of item"),
     skip: int = Query(0, description="Number of items to skip", ge=0),
-    limit: int = Query(0, description="Limits the number of items to return"),
+    limit: int = Query(0, description="Limits the number of items to return", ge=0),
 ) -> dict:
     """
-    Search for candies based on a query string (e.g., name, category, flavor).
+    Search for items based on a query string (e.g., name, category, flavor).
     """
-    candy_store_db.set_collection("candies")
+    awesome_store_db.set_collection("items")
 
     query: dict = {}
 
-    if isinstance(id, int):
-        query["id"] = id
+    if isinstance(id, str):
+        query["_id"] = StoreDatabase.str_to_object_id(id)
     if name:
         query["name"] = {"$regex": f"{name}", "$options": "i"}
     if desc:
@@ -178,156 +161,140 @@ def search_candies(
     if category:
         query["category"] = category
     if isinstance(category_id, int):
-        query["category_id"] = category_id
+        query["category_id"] = StoreDatabase.str_to_object_id(category_id)
 
     if max_price == None or min_price <= max_price:
         query["price"] = {"$gte": min_price, "$lte": max_price}
 
-    candy_list: list[dict] = candy_store_db.find(
-        query, {"_id": 0}, skip=skip, limit=limit
-    )
+    item_list: list[dict] = awesome_store_db.find(query, skip=skip, limit=limit)
 
-    return {"candies": candy_list}
+    return {"items": item_list}
 
 
-@app.get("/candies/category/{category_id}", tags=["Candies"])
-def candy_by_category(
-    category_id: int = Path(description="Category id of candy", ge=0),
+@app.get("/item/category/{category_id}", tags=["Items"])
+def item_by_category(
+    category_id: str = Path(description="Category id of item"),
     skip: int = Query(0, description="Number of items to skip", ge=0),
-    limit: int = Query(0, description="Limits the number of items to return"),
+    limit: int = Query(0, description="Limits the number of items to return", ge=0),
 ) -> dict:
     """
-    Get detailed information about candies in a category by category ID.
+    Get detailed information about items in a category by category ID.
     """
-    candy_store_db.set_collection("candies")
+    awesome_store_db.set_collection("items")
 
-    query: dict = {"category_id": category_id}
+    query: dict = {"category_id": StoreDatabase.str_to_object_id(category_id)}
 
-    candy_list: list[dict] = candy_store_db.find(
-        query, {"_id": 0}, skip=skip, limit=limit
+    item_list: list[dict] = awesome_store_db.find(query, skip=skip, limit=limit)
+
+    return {"items": item_list}
+
+
+@app.get("/items/id/{item_id}", tags=["Items"])
+def item_by_id(
+    item_id: str = Path(..., description="The ID of the item to retrieve", ge=0)
+):
+    """
+    Get detailed information about a specific item.
+    """
+    if not StoreDatabase.is_valid_object_id(item_id):
+        return {"items": []}
+
+    awesome_store_db.set_collection("items")
+    item_list: list[dict] = list(
+        awesome_store_db.find({"_id": StoreDatabase.str_to_object_id(item_id)})
     )
+    return {"items": item_list}
 
-    return {"candies": candy_list}
 
-
-@app.get("/candies/id/{candy_id}", tags=["Candies"])
-def candy_by_id(
-    candy_id: int = Path(..., description="The ID of the candy to retrieve", ge=0)
+@app.get("/image/{item_id}", tags=["Images"])
+async def item_image(
+    item_id: int = Path(..., description="The ID of the item to retrieve", ge=0)
 ):
-    """
-    Get detailed information about a specific candy.
-    """
-    candy_store_db.set_collection("candies")
-    candy_list: list[dict] = list(candy_store_db.find({"id": candy_id}))
-    return {"candies": candy_list}
+    awesome_store_db.set_collection("items")
+    item_list: list[dict] = list(awesome_store_db.find({"id": item_id}))
 
-
-@app.get("/candies/id/{candy_id}/image", tags=["Images"])
-async def candy_image(
-    candy_id: int = Path(..., description="The ID of the candy to retrieve", ge=0)
-):
-    candy_store_db.set_collection("candies")
-    candy_list: list[dict] = list(candy_store_db.find({"id": candy_id}))
-
-    if not candy_list:
+    if not item_list:
         return None
 
-    img_url: str = candy_list[0]["img_url"]
-    file_name: str = candy_list[0]["id"]
+    img_url: str = item_list[0]["img_url"]
+    file_name: str = item_list[0]["id"]
     image_response: requests.Response = requests.get(img_url)
     headers = {"Content-Language": "English", "Content-Type": "image/jpg"}
     headers["Content-Disposition"] = f"attachment;filename={file_name}.jpg"
     return Response(image_response.content, media_type="image/jpg", headers=headers)
 
 
-@app.post("/candies", tags=["Candies"])
-def add_new_candy(
-    candy_info: Candy = Body(
-        description="For inserting a candy record into the database"
-    ),
+@app.post("/items", tags=["Items"])
+def add_new_item(
+    item_info: Item = Body(description="For inserting a item record into the database"),
 ):
     """
-    Add a new candy to the store's inventory.
+    Add a new item to the store's inventory.
     """
-    candy_store_db.set_collection("candies")
+    awesome_store_db.set_collection("categories")
 
-    candy: list[dict] = candy_store_db.find({"id": candy_info.id})
+    c_name: list[dict] = awesome_store_db.find({"name": item_info.category})
 
-    # If existing candy, do nothing
-    if candy:
-        return {"acknowledge": False, "inserted_ids": []}
-
-    candy_store_db.set_collection("categories")
-
-    c_id: list[dict] = candy_store_db.find({"id": candy_info.category_id}, {"_id": 1})
-    c_name: list[dict] = candy_store_db.find({"name": candy_info.category}, {"_id": 1})
-
-    if c_id and c_name:
-        # If existing category, just insert
-        if c_id[0]["_id"] == c_name[0]["_id"]:
-            candy_store_db.set_collection("candies")
-            result = candy_store_db.insert_one(dict(candy_info))
-            return result
-        # If _id do not match
-        else:
-            return {"acknowledge": False, "inserted_ids": []}
-    # If one or other list is empty, do nothing
-    elif (c_id and not c_name) or (not c_id and c_name):
-        return {"acknowledge": False, "inserted_ids": []}
+    # If existing category, just insert
+    if c_name:
+        awesome_store_db.set_collection("items")
+        result = awesome_store_db.insert_one(dict(item_info))
+        return result
     # If not existing category, create new category
-    # Then insert new candy
+    # Then insert new item
     else:
-        candy_store_db.set_collection("candies")
-        result = candy_store_db.insert_one(dict(candy_info))
+        awesome_store_db.set_collection("items")
+        result = awesome_store_db.insert_one(dict(item_info))
 
-        candy_store_db.set_collection("categories")
-        tempRes = candy_store_db.insert_one(
-            {"name": candy_info.category, "id": candy_info.category_id}
-        )
+        awesome_store_db.set_collection("categories")
+        tempRes = awesome_store_db.insert_one({"name": item_info.category})
 
-        result["inserted_ids"] += tempRes["inserted_ids"]
         return result
 
 
-@app.put("/candies", tags=["Candies"])
-def update_candy_info(
-    candy_info: Candy = Body(description="For updating the information of a candy."),
+@app.put("/items/id/{item_id}", tags=["Items"])
+def update_item_info(
+    item_id: str = Path(..., description="The ID of the item to update."),
+    item_info: Item = Body(description="For updating the information of a item."),
 ):
     """
-    Update information about an existing candy.
+    Update information about an existing item.
     """
-    candy_store_db.set_collection("candies")
+    awesome_store_db.set_collection("items")
 
     query: dict = {}
 
-    for key, val in dict(candy_info).items():
-        if key == "id":
-            continue
+    for key, val in dict(item_info).items():
         if not val is None:
             query[key] = val
 
-    result: dict = candy_store_db.put("id", candy_info.id, query)
+    if StoreDatabase.is_valid_object_id(item_id):
+        item_id = StoreDatabase.str_to_object_id(item_id)
+
+    result: dict = awesome_store_db.update_one(
+        {"_id": item_id}, {"$set": dict(item_info)}, upsert=True
+    )
 
     return result
 
 
-@app.delete("/candies/id/{candy_id}", tags=["Candies"])
-def delete_candy(candy_id: int):
+@app.delete("/items/{item_id}", tags=["Items"])
+def delete_item(item_id: str):
     """
-    Remove a candy from the store's inventory.
+    Remove a item from the store's inventory.
     """
-    candy_store_db.set_collection("candies")
-    result = candy_store_db.delete({"id": candy_id})
+    awesome_store_db.set_collection("items")
+    result = awesome_store_db.delete({"_id": StoreDatabase.str_to_object_id(item_id)})
     return result
 
 
 @app.get("/categories", tags=["Categories"])
 def all_categories():
     """
-    Get a list of all candy category information.
+    Get a list of all item category information.
     """
-    candy_store_db.set_collection("categories")
-    category_list: list[dict] = candy_store_db.find({}, {"_id": 0})
+    awesome_store_db.set_collection("categories")
+    category_list: list[dict] = awesome_store_db.find({})
     return {"categories": category_list}
 
 
@@ -340,25 +307,17 @@ def add_new_category(
     """
     Insert a new category into the database.
     """
-    candy_store_db.set_collection("categories")
-    c_id: list[dict] = candy_store_db.find({"id": category.id}, {"_id": 1})
-    c_name: list[dict] = candy_store_db.find({"id": category.id}, {"_id": 1})
+    awesome_store_db.set_collection("categories")
 
-    if c_id and c_name:
-        # If existing category
-        if c_id[0]["_id"] == c_name[0]["_id"]:
-            return {"acknowledge": False, "inserted_ids": []}
-        # If _id do not match, return None
-        else:
-            return {"acknowledge": False, "inserted_ids": []}
-    # If one or other list is empty, do nothing
-    elif (c_id and not c_name) or (not c_id and c_name):
-        return {"acknowledge": False, "inserted_ids": []}
-    # If not existing category, create new category
-    # Then insert new category
-    else:
-        result = candy_store_db.insert_one({"name": category.name, "id": category.name})
-        return result
+    exist = awesome_store_db.find(dict(category), limit=1)
+    if exist:
+        return {
+            "acknowledged": True,
+            "inserted_id": "None",
+        }
+    result: dict = awesome_store_db.insert_one(dict(category))
+
+    return result
 
 
 @app.get("/categories/id/{category_id}", tags=["Categories"])
@@ -368,10 +327,10 @@ def category_by_id(
     )
 ):
     """
-    Get the information of a candy category by ID.
+    Get the information of a item category by ID.
     """
-    candy_store_db.set_collection("categories")
-    category_list: list[dict] = candy_store_db.find({"id": category_id}, {"_id": 0})
+    awesome_store_db.set_collection("categories")
+    category_list: list[dict] = awesome_store_db.find({"id": category_id}, {"_id": 0})
     return {"categories": category_list}
 
 
@@ -379,7 +338,7 @@ if __name__ == "__main__":
     load_dotenv(ENV_PATH)
 
     HOST: str = "0.0.0"
-    PORT: int = 8084
+    PORT: int = 8085
     ssl_certfile: str = os.environ.get("SSL_CERTFILE")
     ssl_keyfile: str = os.environ.get("SSL_KEYFILE")
     ssl_ca_certs: str = os.environ.get("SSL_CA_CERTS")

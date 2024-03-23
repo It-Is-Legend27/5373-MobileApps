@@ -55,6 +55,8 @@ def load_database(
     db.create_collection(
         categories_collection, validators[categories_collection]
     )
+    db.set_collection(StoreDatabase.Collections.CategoriesCollection)
+    db.collection.create_index({"name": 1}, unique=True)
     db.create_collection(users_collection, validators[users_collection])
 
     with open(users_file, "r") as file:
@@ -75,13 +77,11 @@ def load_database(
             category["name"] = category_name
             db.set_collection(categories_collection)
             result: dict = db.insert_one(category)
-            category["_id"] = StoreDatabase.str_to_object_id(result["inserted_id"])
 
             db.set_collection(items_collection)
             for id, item in json_data.items():
                 item.pop("id")
                 item["category_name"] = category["name"]
-                item["category_id"] = category["_id"]
                 if not db.find({"name": item["name"]}):
                     db.insert_one(item)
 
