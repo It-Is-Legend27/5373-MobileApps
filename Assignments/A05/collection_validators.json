@@ -9,7 +9,7 @@
                 "img_url",
                 "price",
                 "desc",
-                "category_name"
+                "category"
             ],
             "properties": {
                 "name": {
@@ -32,24 +32,9 @@
                     "bsonType": "string",
                     "description": "'name' must be a string and is required"
                 },
-                "category_name": {
+                "category": {
                     "bsonType": "string",
                     "description": "'category_name' must be a string and is required"
-                }
-            }
-        }
-    },
-    "categories": {
-        "$jsonSchema": {
-            "bsonType": "object",
-            "title": "Category Object Validation",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "bsonType": "string",
-                    "description": "'name' must be a string and is required"
                 }
             }
         }

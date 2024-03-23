@@ -1,14 +1,15 @@
-"""item Store API
+"""Awesome Store API
 
-item Store API built with FastAPI.
-
+Awesome Store API built with FastAPI.
 """
 
 from fastapi import FastAPI, Query, Path, Body
+from fastapi.exceptions import HTTPException
 from fastapi.responses import RedirectResponse, FileResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from store_database import StoreDatabase
+from pymongo.errors import PyMongoError, ProtocolError, DuplicateKeyError
 from contextlib import asynccontextmanager
 import uvicorn
 import json
@@ -17,7 +18,7 @@ from rich import print
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 import requests
-from models import Item, Category, User
+from models import Item, User
 
 
 # ██████   █████  ███████ ███████     ███    ███  ██████  ██████  ███████ ██      ███████
@@ -141,151 +142,162 @@ def search_items(
         strict=False,
     ),
     category: str = Query(None, description="Category of item"),
-    category_id: str = Query(None, description="Category id of item"),
     skip: int = Query(0, description="Number of items to skip", ge=0),
     limit: int = Query(0, description="Limits the number of items to return", ge=0),
 ) -> dict:
     """
     Search for items based on a query string (e.g., name, category, flavor).
     """
-    awesome_store_db.set_collection("items")
+    awesome_store_db.set_collection(StoreDatabase.Collections.ItemsCollection)
 
     query: dict = {}
 
-    if isinstance(id, str):
-        query["_id"] = StoreDatabase.str_to_object_id(id)
-    if name:
-        query["name"] = {"$regex": f"{name}", "$options": "i"}
-    if desc:
-        query["desc"] = {"$regex": f"{desc}", "$options": "i"}
-    if category:
-        query["category"] = category
-    if isinstance(category_id, int):
-        query["category_id"] = StoreDatabase.str_to_object_id(category_id)
+    try:
+        if id:
+            if StoreDatabase.is_valid_object_id(id):
+                query["_id"] = StoreDatabase.str_to_object_id(id)
+            else:
+                query["_id"] = id
+        if name:
+            query["name"] = {"$regex": f"{name}", "$options": "i"}
+        if desc:
+            query["desc"] = {"$regex": f"{desc}", "$options": "i"}
+        if category:
+            query["category"] = category
 
-    if max_price == None or min_price <= max_price:
-        query["price"] = {"$gte": min_price, "$lte": max_price}
+        if max_price == None or min_price <= max_price:
+            query["price"] = {"$gte": min_price, "$lte": max_price}
 
-    item_list: list[dict] = awesome_store_db.find(query, skip=skip, limit=limit)
+        item_list: list[dict] = awesome_store_db.find(query, skip=skip, limit=limit)
+        return {"items": item_list}
+    except Exception as e:
+        raise HTTPException(422, f"{e}")
 
-    return {"items": item_list}
 
-
-@app.get("/item/category/{category_id}", tags=["Items"])
+@app.get("/items/category/{category}", tags=["Items"])
 def item_by_category(
-    category_id: str = Path(description="Category id of item"),
+    category: str = Path(description="Category name of item"),
     skip: int = Query(0, description="Number of items to skip", ge=0),
     limit: int = Query(0, description="Limits the number of items to return", ge=0),
 ) -> dict:
     """
-    Get detailed information about items in a category by category ID.
+    Get detailed information about items in a category by category name.
     """
-    awesome_store_db.set_collection("items")
+    awesome_store_db.set_collection(StoreDatabase.Collections.ItemsCollection)
 
-    query: dict = {"category_id": StoreDatabase.str_to_object_id(category_id)}
+    query: dict = {"category": category}
 
-    item_list: list[dict] = awesome_store_db.find(query, skip=skip, limit=limit)
+    try:
+        item_list: list[dict] = awesome_store_db.find(query, skip=skip, limit=limit)
 
-    return {"items": item_list}
+        return {"items": item_list}
+    except Exception as e:
+        raise HTTPException(422, f"{e}")
 
 
-@app.get("/items/id/{item_id}", tags=["Items"])
-def item_by_id(
-    item_id: str = Path(..., description="The ID of the item to retrieve", ge=0)
-):
+@app.get("/items/id/{id}", tags=["Items"])
+def item_by_id(id: str = Path(..., description="The ID of the item to retrieve")):
     """
     Get detailed information about a specific item.
     """
-    if not StoreDatabase.is_valid_object_id(item_id):
-        return {"items": []}
+    if not StoreDatabase.is_valid_object_id(id):
+        raise HTTPException(404, detail="Not Found")
 
+    try:
+        awesome_store_db.set_collection("items")
+        item: dict | None = awesome_store_db.find_one(
+            {"_id": StoreDatabase.str_to_object_id(id)}
+        )
+
+        return {"item": item}
+    except Exception as e:
+        raise HTTPException(422, f"{e}")
+
+
+@app.get("/image/{id}", tags=["Images"])
+async def item_image(id: str = Path(..., description="The ID of the item to retrieve")):
+    """
+    Get an item's image, given the ID.
+    """
     awesome_store_db.set_collection("items")
-    item_list: list[dict] = list(
-        awesome_store_db.find({"_id": StoreDatabase.str_to_object_id(item_id)})
-    )
-    return {"items": item_list}
 
+    if not StoreDatabase.is_valid_object_id(id):
+        raise HTTPException(404, detail="Not Found")
 
-@app.get("/image/{item_id}", tags=["Images"])
-async def item_image(
-    item_id: int = Path(..., description="The ID of the item to retrieve", ge=0)
-):
-    awesome_store_db.set_collection("items")
-    item_list: list[dict] = list(awesome_store_db.find({"id": item_id}))
+    item: dict = awesome_store_db.find_one({"_id": StoreDatabase.str_to_object_id(id)})
 
-    if not item_list:
-        return None
+    if not item:
+        raise HTTPException(404, detail="Not Found")
 
-    img_url: str = item_list[0]["img_url"]
-    file_name: str = item_list[0]["id"]
-    image_response: requests.Response = requests.get(img_url)
-    headers = {"Content-Language": "English", "Content-Type": "image/jpg"}
-    headers["Content-Disposition"] = f"attachment;filename={file_name}.jpg"
-    return Response(image_response.content, media_type="image/jpg", headers=headers)
+    try:
+        img_url: str = item["img_url"]
+        file_name: str = item["_id"]
+        image_response: requests.Response = requests.get(img_url)
+        headers = {"Content-Language": "English", "Content-Type": "image/jpg"}
+        headers["Content-Disposition"] = f"attachment;filename={file_name}.jpg"
+        return Response(image_response.content, media_type="image/jpg", headers=headers)
+    except Exception as e:
+        raise HTTPException(400, f"{e}")
 
 
 @app.post("/items", tags=["Items"])
 def add_new_item(
-    item_info: Item = Body(description="For inserting a item record into the database"),
+    item: Item = Body(description="For inserting a item record into the database"),
 ):
     """
     Add a new item to the store's inventory.
     """
-    awesome_store_db.set_collection("categories")
+    awesome_store_db.set_collection(StoreDatabase.Collections.ItemsCollection)
 
-    c_name: list[dict] = awesome_store_db.find({"name": item_info.category})
-
-    # If existing category, just insert
-    if c_name:
-        awesome_store_db.set_collection("items")
-        result = awesome_store_db.insert_one(dict(item_info))
+    try:
+        result: dict = awesome_store_db.insert_one(dict(item))
         return result
-    # If not existing category, create new category
-    # Then insert new item
-    else:
-        awesome_store_db.set_collection("items")
-        result = awesome_store_db.insert_one(dict(item_info))
-
-        awesome_store_db.set_collection("categories")
-        tempRes = awesome_store_db.insert_one({"name": item_info.category})
-
-        return result
+    except Exception as e:
+        raise HTTPException(400, f"{e}")
 
 
-@app.put("/items/id/{item_id}", tags=["Items"])
+@app.put("/items/id/{id}", tags=["Items"])
 def update_item_info(
-    item_id: str = Path(..., description="The ID of the item to update."),
+    id: str = Path(..., description="The ID of the item to update."),
     item_info: Item = Body(description="For updating the information of a item."),
 ):
     """
-    Update information about an existing item.
+    Update information about an existing item. If item does not exist, insert new one.
     """
-    awesome_store_db.set_collection("items")
+    awesome_store_db.set_collection(StoreDatabase.Collections.ItemsCollection)
 
-    query: dict = {}
+    if not StoreDatabase.is_valid_object_id(id):
+        raise HTTPException(404, detail="Not Found")
+    try:
+        result: dict = awesome_store_db.update_one(
+            {"_id": StoreDatabase.str_to_object_id(id)},
+            {"$set": dict(item_info)},
+            upsert=True,
+        )
 
-    for key, val in dict(item_info).items():
-        if not val is None:
-            query[key] = val
-
-    if StoreDatabase.is_valid_object_id(item_id):
-        item_id = StoreDatabase.str_to_object_id(item_id)
-
-    result: dict = awesome_store_db.update_one(
-        {"_id": item_id}, {"$set": dict(item_info)}, upsert=True
-    )
-
-    return result
+        return result
+    except Exception as e:
+        raise HTTPException(400, detail=f"{e}")
 
 
-@app.delete("/items/{item_id}", tags=["Items"])
-def delete_item(item_id: str):
+@app.delete("/items/{id}", tags=["Items"])
+def delete_item(id: str = Path(..., description="The ID of the item to retrieve")):
     """
     Remove a item from the store's inventory.
     """
-    awesome_store_db.set_collection("items")
-    result = awesome_store_db.delete({"_id": StoreDatabase.str_to_object_id(item_id)})
-    return result
+    awesome_store_db.set_collection(StoreDatabase.Collections.ItemsCollection)
+
+    if not StoreDatabase.is_valid_object_id(id):
+        print("Whoosh")
+        raise HTTPException(404, detail="Not Found")
+
+    try:
+        result: dict = awesome_store_db.delete_one(
+            {"_id": StoreDatabase.str_to_object_id(id)}
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(400, f"{e}")
 
 
 @app.get("/categories", tags=["Categories"])
@@ -293,45 +305,62 @@ def all_categories():
     """
     Get a list of all item category information.
     """
-    awesome_store_db.set_collection("categories")
-    category_list: list[dict] = awesome_store_db.find({})
-    return {"categories": category_list}
+    awesome_store_db.set_collection(StoreDatabase.Collections.ItemsCollection)
+
+    try:
+        category_list: list[dict] = awesome_store_db.distinct("category")
+        return {"categories": category_list}
+    except Exception as e:
+        raise HTTPException(400, f"{e}")
 
 
-@app.post("/categories", tags=["Categories"])
-def add_new_category(
-    category: Category = Body(
-        description="For inserting a new category into the database"
-    ),
+@app.post("/login", tags=["Login and Registration"])
+def login(
+    username: str = Body(description="Username of user."),
+    password: str = Body(description="Password of user."),
 ):
     """
-    Insert a new category into the database.
+    Logging into the app.
     """
-    awesome_store_db.set_collection("categories")
+    awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
 
-    exist = awesome_store_db.find(dict(category), limit=1)
-    if exist:
+    try:
+        result: dict = awesome_store_db.find_one({"username": username})
+
+        if not result:
+            return {"success": False, "detail": "Username does not exist."}
+
+        result = dict(result)
+
+        success: bool = result.get("password") == password
+
+        if success:
+            return {"success": success, "detail": "Login successful"}
+        else:
+            return {"success": False, "detail": "Incorrect password"}
+
+    except Exception as e:
+        raise HTTPException(400, f"{e}")
+
+
+@app.post("/register", tags=["Login and Registration"])
+def register(user: User = Body(description="User information")):
+    """
+    Registering as a new user for the app.
+    """
+    awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
+
+    try:
+        result: dict = awesome_store_db.insert_one(dict(user))
+
+        return {"success": True, "detail": "Registration successful."}
+    except DuplicateKeyError as d:
         return {
-            "acknowledged": True,
-            "inserted_id": "None",
+            "success": False,
+            "detail": "Username or email is already in use. Use a different username or email address.",
         }
-    result: dict = awesome_store_db.insert_one(dict(category))
-
-    return result
-
-
-@app.get("/categories/id/{category_id}", tags=["Categories"])
-def category_by_id(
-    category_id: int = Path(
-        ..., description="The ID of the category information to retrieve"
-    )
-):
-    """
-    Get the information of a item category by ID.
-    """
-    awesome_store_db.set_collection("categories")
-    category_list: list[dict] = awesome_store_db.find({"id": category_id}, {"_id": 0})
-    return {"categories": category_list}
+    except Exception as e:
+        raise HTTPException(400, f"{e}")
 
 
 if __name__ == "__main__":

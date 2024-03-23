@@ -1,6 +1,7 @@
-"""
-This file opens up the folder categoryJson and processes each json file
-adding the category name to each candy document and posting it to mongodb
+"""Setting up and populating the database.
+
+Provides function for easily initializing and creating the store database.
+Provides the function load_database.
 """
 
 from store_database import StoreDatabase
@@ -20,17 +21,11 @@ def load_database(
     host: str = None,
     port: str = None,
     database: str = None,
-    items_collection: (
-        str | StoreDatabase.Collections
-    ) = StoreDatabase.Collections.UsersCollection,
-    categories_collection: (
-        str | StoreDatabase.Collections
-    ) = StoreDatabase.Collections.CategoriesCollection,
-    users_collection: (
-        str | StoreDatabase.Collections
-    ) = StoreDatabase.Collections.UsersCollection,
 ) -> None:
-
+    """Configures the database and populates the collections.
+    
+    Configures the database for the store and populates the collections.
+    """
     # Get absolute path
     folder_path = os.path.abspath(folder_path)
 
@@ -40,6 +35,7 @@ def load_database(
     validators: dict = None
     users: list[dict] = None
 
+    # Read in validator / jsonSchema for each collection
     with open(collection_validator_config, "r") as file:
         validators = json.load(file)
 
@@ -47,41 +43,43 @@ def load_database(
         username=username, password=password, host=host, port=port, database=database
     )
 
-    db.drop_collection(items_collection)
-    db.drop_collection(categories_collection)
-    db.drop_collection(users_collection)
+    db.drop_collection(StoreDatabase.Collections.ItemsCollection)
+    db.drop_collection(StoreDatabase.Collections.UsersCollection)
 
-    db.create_collection(items_collection, validators[items_collection])
+    # Create items collection with specified schema and unique index
     db.create_collection(
-        categories_collection, validators[categories_collection]
+        StoreDatabase.Collections.ItemsCollection,
+        validators[StoreDatabase.Collections.ItemsCollection],
     )
-    db.set_collection(StoreDatabase.Collections.CategoriesCollection)
-    db.collection.create_index({"name": 1}, unique=True)
-    db.create_collection(users_collection, validators[users_collection])
+    db.set_collection(StoreDatabase.Collections.ItemsCollection)
+    # db.collection.create_index({"name": 1}, unique=True)
+
+    # Create users collection with specified schema and unique indices
+    db.create_collection(
+        StoreDatabase.Collections.UsersCollection,
+        validators[StoreDatabase.Collections.UsersCollection],
+    )
+    db.set_collection(StoreDatabase.Collections.UsersCollection)
+    db.collection.create_index({"username": 1}, unique=True)
+    db.collection.create_index({"email": 1}, unique=True)
 
     with open(users_file, "r") as file:
         users = json.load(file)
 
-    db.set_collection(StoreDatabase.Collections.UsersCollection)
     db.insert_many(users)
 
     for file in json_files:
         parts = file.split("/")
-        category_name = parts[-1][:-5].replace("-", " ").title()
-
-        category: dict = {}
+        category = parts[-1][:-5].replace("-", " ").title()
 
         with open(file) as f:
             json_data: dict = json.load(f)
 
-            category["name"] = category_name
-            db.set_collection(categories_collection)
-            result: dict = db.insert_one(category)
-
-            db.set_collection(items_collection)
+            db.set_collection(StoreDatabase.Collections.ItemsCollection)
             for id, item in json_data.items():
                 item.pop("id")
-                item["category_name"] = category["name"]
+                item["category"] = category
+                # Avoid inserting duplicates
                 if not db.find({"name": item["name"]}):
                     db.insert_one(item)
 
@@ -100,8 +98,6 @@ if __name__ == "__main__":
         "username": username,
         "password": password,
         "database": "awesome_store",
-        "items_collection": StoreDatabase.Collections.ItemsCollection,
-        "categories_collection": StoreDatabase.Collections.CategoriesCollection,
         "port": 27017,
         "host": "localhost",
     }

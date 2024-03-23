@@ -1,3 +1,9 @@
+"""Provides easy-to-use class for database operations.
+
+Provides the class StoreDatabase to make it easier to perform database
+operations on the online store database.
+"""
+
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.database import Database
 from pymongo.collection import Collection
@@ -18,9 +24,18 @@ from enum import Enum, StrEnum
 
 
 class StoreDatabase:
+    """Performs operations on database.
+
+    Performs operations on MongoDB database.
+    """
+
     class Collections(StrEnum):
+        """Enums for representing collections.
+
+        Represents the types of collections in the database.
+        """
+
         ItemsCollection: str = "items"
-        CategoriesCollection: str = "categories"
         UsersCollection: str = "users"
 
     def __init__(
@@ -32,6 +47,9 @@ class StoreDatabase:
         database: str = None,
         collection: str = None,
     ) -> None:
+        """ "Connects to the database.
+        Establishes a connection to the database.
+        """
         self.host: str = host
         self.port: int = port
         self.database: Database = None
@@ -62,59 +80,131 @@ class StoreDatabase:
             if collection is not None:
                 self.set_collection(collection)
 
-    def __repr__(self) -> str:
-        return f"MongoManager(host= '{self.host}', port= {self.port})"
-
     def set_database(self, database: str) -> None:
         """Sets the current database."""
         self.database = self.client[database]
 
-    def create_collection(self, collection: str | Collections, validator: dict):
+    def create_collection(self, collection: str | Collections, validator: dict = None):
+        """Creates a new collection.
+
+        Creates a new collection
+
+        Args:
+            collection (str, StoreDatabase.Collections): Name of the collection.
+            validator (dict, optional): Validator for jsonSchema of the documents in the collection.
+        """
         self.database.create_collection(str(collection), validator=validator)
 
     def set_collection(self, collection: str | Collections):
-        """Sets the current collection."""
+        """Sets the collection.
+
+        Sets the collection.
+
+        Args:
+            collection (str, StoreDatabase.Collections): Name of collection.
+        """
         self.collection = self.database[str(collection)]
 
     def drop_collection(self, collection: str | Collections):
+        """Drops a collection.
+
+        Drops a collection from the database.
+
+        Args:
+            collection (str, StoreDatabase.Collections): Name of the collection.
+        """
         self.database.drop_collection(str(collection))
 
     def drop_database(self, database: str):
-        """Deletes a database."""
+        """Drops a database.
+
+        Drops the specified database.
+
+        Args:
+            datbase (str): Name of the database.
+        """
         self.client.drop_database(database)
+
+    def distinct(self, key: str, filter: dict = {}) -> list[str]:
+        """Returns distinct values in a collection.
+
+        Returns distinct values in a collecion.
+
+        Args:
+            key (str): The key / field name to inspect.
+            filter (dict, optional): Other filters to apply.
+        Returns:
+            A list of distinct values for a given key.
+        """
+        distinct_vals: list[str] = self.collection.distinct(key, filter)
+
+        return distinct_vals
+
+    def find_one(self, filter: dict = {}, projection: dict = {}) -> dict | None:
+        """Return one matching document.
+
+        Returns one matching document for a given query.
+
+        Args:
+            filter (dict): Filter for query.
+            projection (dict, optional): Specifies what fields to include, exclude, etc.
+        Returns:
+            A dict for the matching document.
+        """
+        result: dict = None
+        result = self.collection.find_one(filter, projection)
+
+        if result:
+            for key, value in result.items():
+                if isinstance(value, ObjectId):
+                    result.update({key: str(value)})
+        return result
 
     def find(
         self,
-        query: dict = {},
         filter: dict = {},
+        projection: dict = {},
         skip: int = 0,
         limit: int = 0,
         sort: list[tuple] = [("_id", 1)],
     ) -> list[dict]:
-        """
+        """Returns matching documents.
+
         Retrieves documents from the collection based on the provided criteria.
 
-        :param query: Dictionary for filtering documents using MongoDB query syntax.
-        :param skip: Integer specifying the number of documents to skip.
-        :param limit: Integer specifying the maximum number of documents to return.
-        :param sort_criteria: List of tuples specifying field and direction to sort by.
-        :return: Dictionary with the operation's success status, result size, and data.
+        Args:
+            filter (dict, optional): Filter for the query.
+            projection (dict, optional): Project for the results.
+            skip (int, optional): Number of documents to skip.
+            limit (int, optional): Number of documents to return. Limit of 0 returns all matches.
+            sort (list[tuple], optional): Criteria for sorting documents.
+        Returns:
+            List of matching documents.
         """
 
         results: Cursor = (
-            self.collection.find(query, filter).sort(sort).skip(skip).limit(limit)
+            self.collection.find(filter, projection).sort(sort).skip(skip).limit(limit)
         )
 
-        items_list: list[dict] = []
-        for item in results:
-            fitem: dict = dict(item)
-            for key, value in fitem.items():
+        result_list: list[dict] = []
+        for doc in results:
+            fdoc: dict = dict(doc)
+            for key, value in fdoc.items():
                 if isinstance(value, ObjectId):
-                    fitem.update({key: str(value)})
-            items_list.append(fitem)
-        return items_list
+                    fdoc.update({key: str(value)})
+            result_list.append(fdoc)
+        return result_list
 
     def insert_one(self, document: dict) -> dict:
+        """Inserts a document.
+
+        Inserts a document into the collection.
+
+        Args:
+            document (dict): Document to be inserted.
+        Returns:
+            Dict describing the result of the operation.
+        """
         result: InsertOneResult = self.collection.insert_one(document)
         return {
             "acknowledged": result.acknowledged,
@@ -122,6 +212,15 @@ class StoreDatabase:
         }
 
     def insert_many(self, documents: list[dict]) -> dict:
+        """Insert multiple documents.
+
+        Inserts a list or tuple of documents into the collection.
+
+        Args:
+            documents (list[dict]): Documents to be inserted.
+        Returns:
+            Dict describing the result of the operation.
+        """
         result: InsertManyResult = self.collection.insert_many(
             documents=documents, ordered=False
         )
@@ -131,17 +230,17 @@ class StoreDatabase:
         }
 
     def update_one(self, filter: dict, update: dict, upsert: bool = False) -> dict:
+        """Updates one matching documents.
+
+        Updates one matching document based of filter and update dict.
+
+        Args:
+            filter (dict): Filter for the query.
+            update (dict): New values for the document.
+            upsert (bool, optional): If True, inserts new document, if not existing. Default is False.
+        Returns:
+            Dict describing the result of the operation.
         """
-        Updates the price of a specific item in the collection.
-
-        :param item_id: The unique identifier for the item.
-        :param new_price: The new price to set.
-        :return: Result of the update operation.
-        """
-
-        # if "_id" in update.keys() and StoreDB.is_valid_object_id(update["_id"]):
-        #     update["_id"] = ObjectId(update["_id"])
-
         # Perform the update
         result: UpdateResult = self.collection.update_one(
             filter,  # Query to match the document
@@ -157,6 +256,17 @@ class StoreDatabase:
         }
 
     def update_many(self, filter: dict, update: dict, upsert: bool = False) -> dict:
+        """Updates all matching documents.
+
+        Updates all matching document based of filter and update dict.
+
+        Args:
+            filter (dict): Filter for the query.
+            update (dict): New values for the document.
+            upsert (bool, optional): If True, inserts new document, if not existing. Default is False.
+        Returns:
+            Dict describing the result of the operation.
+        """
         result: UpdateResult = self.collection.update_many(
             filter,
             update,
@@ -172,6 +282,15 @@ class StoreDatabase:
         }
 
     def delete_one(self, filter: dict) -> dict:
+        """Deletes one matching document.
+
+        Deletes one matching document based on filter.
+
+        Args:
+            filter (dict): Filter for the query.
+        Returns:
+            Dict describing the result of the operation.
+        """
         result: DeleteResult = self.collection.delete_one(filter)
         return {
             "acknowledged": result.acknowledged,
@@ -180,6 +299,15 @@ class StoreDatabase:
         }
 
     def delete_many(self, filter: dict) -> dict:
+        """Deletes all matching documents.
+
+        Deletes all matching documents based on filter.
+
+        Args:
+            filter (dict): Filter for the query.
+        Returns:
+            Dict describing the result of the operation.
+        """
         result: DeleteResult = self.collection.delete_many(filter)
         return {
             "acknowledged": result.acknowledged,
@@ -188,10 +316,28 @@ class StoreDatabase:
         }
 
     def close(self) -> None:
+        """Close connection to database.
+
+        Closes the connection to the database.
+        """
         self.client.close()
 
     def is_valid_object_id(id_str: str) -> bool:
+        """Checks if str is valid ObjectID.
+
+        Checks if str is valid ObjectID.
+
+        Returns:
+            True if str is valid ObjectID, false otherwise.
+        """
         return ObjectId.is_valid(id_str)
 
     def str_to_object_id(id_str: str) -> ObjectId:
+        """Returns ObjectID for str.
+
+        Converts a str into an ObjectID.
+
+        Returns:
+            ObjectID for the given str.
+        """
         return ObjectId(id_str)
