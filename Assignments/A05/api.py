@@ -153,7 +153,7 @@ def search_items(
     query: dict = {}
 
     try:
-        if id:
+        if id != None:
             if StoreDatabase.is_valid_object_id(id):
                 query["_id"] = StoreDatabase.str_to_object_id(id)
             else:
