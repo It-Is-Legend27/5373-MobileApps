@@ -8,7 +8,7 @@ from fastapi import FastAPI, Query, Path, Body
 from fastapi.responses import RedirectResponse, FileResponse, Response, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from mongoManager import CandyStoreDB
+from Assignments.A05.store_database import StoreDatabase
 from contextlib import asynccontextmanager
 import uvicorn
 import json
@@ -78,7 +78,7 @@ This API returns candy store stuff. **Enough said**.
 <br>
 ![candy](./static/candy_face.gif)
 """
-candy_store_db: CandyStoreDB = None
+candy_store_db: StoreDatabase = None
 
 
 # ██      ██ ███████ ███████ ███████ ██████   █████  ███    ██     ███████ ██    ██ ███████ ███    ██ ████████
@@ -97,7 +97,7 @@ async def lifespan(app: FastAPI):
     candy_store_password = os.environ.get("CANDY_STORE_PASSWORD")
 
     global candy_store_db
-    candy_store_db = CandyStoreDB(
+    candy_store_db = StoreDatabase(
         candy_user, candy_store_password, database="candy_store", collection="candies"
     )
     yield
@@ -165,7 +165,7 @@ def search_candies(
     """
     Search for candies based on a query string (e.g., name, category, flavor).
     """
-    candy_store_db.setCollection("candies")
+    candy_store_db.set_collection("candies")
 
     query: dict = {}
 
@@ -183,7 +183,7 @@ def search_candies(
     if max_price == None or min_price <= max_price:
         query["price"] = {"$gte": min_price, "$lte": max_price}
 
-    candy_list: list[dict] = candy_store_db.get(
+    candy_list: list[dict] = candy_store_db.find(
         query, {"_id": 0}, skip=skip, limit=limit
     )
 
@@ -199,11 +199,11 @@ def candy_by_category(
     """
     Get detailed information about candies in a category by category ID.
     """
-    candy_store_db.setCollection("candies")
+    candy_store_db.set_collection("candies")
 
     query: dict = {"category_id": category_id}
 
-    candy_list: list[dict] = candy_store_db.get(
+    candy_list: list[dict] = candy_store_db.find(
         query, {"_id": 0}, skip=skip, limit=limit
     )
 
@@ -217,8 +217,8 @@ def candy_by_id(
     """
     Get detailed information about a specific candy.
     """
-    candy_store_db.setCollection("candies")
-    candy_list: list[dict] = list(candy_store_db.get({"id": candy_id}))
+    candy_store_db.set_collection("candies")
+    candy_list: list[dict] = list(candy_store_db.find({"id": candy_id}))
     return {"candies": candy_list}
 
 
@@ -226,8 +226,8 @@ def candy_by_id(
 async def candy_image(
     candy_id: int = Path(..., description="The ID of the candy to retrieve", ge=0)
 ):
-    candy_store_db.setCollection("candies")
-    candy_list: list[dict] = list(candy_store_db.get({"id": candy_id}))
+    candy_store_db.set_collection("candies")
+    candy_list: list[dict] = list(candy_store_db.find({"id": candy_id}))
 
     if not candy_list:
         return None
@@ -249,24 +249,24 @@ def add_new_candy(
     """
     Add a new candy to the store's inventory.
     """
-    candy_store_db.setCollection("candies")
+    candy_store_db.set_collection("candies")
 
-    candy: list[dict] = candy_store_db.get({"id": candy_info.id})
+    candy: list[dict] = candy_store_db.find({"id": candy_info.id})
 
     # If existing candy, do nothing
     if candy:
         return {"acknowledge": False, "inserted_ids": []}
 
-    candy_store_db.setCollection("categories")
+    candy_store_db.set_collection("categories")
 
-    c_id: list[dict] = candy_store_db.get({"id": candy_info.category_id}, {"_id": 1})
-    c_name: list[dict] = candy_store_db.get({"name": candy_info.category}, {"_id": 1})
+    c_id: list[dict] = candy_store_db.find({"id": candy_info.category_id}, {"_id": 1})
+    c_name: list[dict] = candy_store_db.find({"name": candy_info.category}, {"_id": 1})
 
     if c_id and c_name:
         # If existing category, just insert
         if c_id[0]["_id"] == c_name[0]["_id"]:
-            candy_store_db.setCollection("candies")
-            result = candy_store_db.post(dict(candy_info))
+            candy_store_db.set_collection("candies")
+            result = candy_store_db.insert_one(dict(candy_info))
             return result
         # If _id do not match
         else:
@@ -277,11 +277,11 @@ def add_new_candy(
     # If not existing category, create new category
     # Then insert new candy
     else:
-        candy_store_db.setCollection("candies")
-        result = candy_store_db.post(dict(candy_info))
+        candy_store_db.set_collection("candies")
+        result = candy_store_db.insert_one(dict(candy_info))
 
-        candy_store_db.setCollection("categories")
-        tempRes = candy_store_db.post(
+        candy_store_db.set_collection("categories")
+        tempRes = candy_store_db.insert_one(
             {"name": candy_info.category, "id": candy_info.category_id}
         )
 
@@ -296,7 +296,7 @@ def update_candy_info(
     """
     Update information about an existing candy.
     """
-    candy_store_db.setCollection("candies")
+    candy_store_db.set_collection("candies")
 
     query: dict = {}
 
@@ -316,7 +316,7 @@ def delete_candy(candy_id: int):
     """
     Remove a candy from the store's inventory.
     """
-    candy_store_db.setCollection("candies")
+    candy_store_db.set_collection("candies")
     result = candy_store_db.delete({"id": candy_id})
     return result
 
@@ -326,8 +326,8 @@ def all_categories():
     """
     Get a list of all candy category information.
     """
-    candy_store_db.setCollection("categories")
-    category_list: list[dict] = candy_store_db.get({}, {"_id": 0})
+    candy_store_db.set_collection("categories")
+    category_list: list[dict] = candy_store_db.find({}, {"_id": 0})
     return {"categories": category_list}
 
 
@@ -340,9 +340,9 @@ def add_new_category(
     """
     Insert a new category into the database.
     """
-    candy_store_db.setCollection("categories")
-    c_id: list[dict] = candy_store_db.get({"id": category.id}, {"_id": 1})
-    c_name: list[dict] = candy_store_db.get({"id": category.id}, {"_id": 1})
+    candy_store_db.set_collection("categories")
+    c_id: list[dict] = candy_store_db.find({"id": category.id}, {"_id": 1})
+    c_name: list[dict] = candy_store_db.find({"id": category.id}, {"_id": 1})
 
     if c_id and c_name:
         # If existing category
@@ -357,7 +357,7 @@ def add_new_category(
     # If not existing category, create new category
     # Then insert new category
     else:
-        result = candy_store_db.post({"name": category.name, "id": category.name})
+        result = candy_store_db.insert_one({"name": category.name, "id": category.name})
         return result
 
 
@@ -370,8 +370,8 @@ def category_by_id(
     """
     Get the information of a candy category by ID.
     """
-    candy_store_db.setCollection("categories")
-    category_list: list[dict] = candy_store_db.get({"id": category_id}, {"_id": 0})
+    candy_store_db.set_collection("categories")
+    category_list: list[dict] = candy_store_db.find({"id": category_id}, {"_id": 0})
     return {"categories": category_list}
 
 

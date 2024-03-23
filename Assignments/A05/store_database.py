@@ -8,18 +8,21 @@ from pymongo.results import (
     DeleteResult,
     UpdateResult,
     BulkWriteResult,
-    UpdateResult,
 )
 from pymongo.errors import PyMongoError, ConnectionFailure, InvalidOperation
 from rich import print
 from bson.objectid import ObjectId
 from bson.errors import InvalidId
 from bson.son import SON
-from enum import Enum
+from enum import Enum, StrEnum
 
-class CandyStoreDB:
-    class Collections:
-        pass
+
+class StoreDatabase:
+    class Collections(StrEnum):
+        ItemsCollection: str = "items"
+        CategoriesCollection: str = "categories"
+        UsersCollection: str = "users"
+
     def __init__(
         self,
         username: str = None,
@@ -53,37 +56,40 @@ class CandyStoreDB:
 
         # if a db is specified then make connection
         if database is not None:
-            self.setDb(database)
+            self.set_database(database)
 
             # if db is specified then check for collection as well
             if collection is not None:
-                self.collection = self.database[collection]
+                self.set_collection(collection)
 
     def __repr__(self) -> str:
         return f"MongoManager(host= '{self.host}', port= {self.port})"
 
-    def setDb(self, database: str) -> None:
+    def set_database(self, database: str) -> None:
         """Sets the current database."""
         self.database = self.client[database]
 
-    def setCollection(self, collection: str):
+    def create_collection(self, collection: str | Collections, validator: dict):
+        self.database.create_collection(str(collection), validator=validator)
+
+    def set_collection(self, collection: str | Collections):
         """Sets the current collection."""
-        self.collection = self.database[collection]
+        self.collection = self.database[str(collection)]
 
-    def dropCollection(self, collection: str):
-        self.database.drop_collection(collection)
+    def drop_collection(self, collection: str | Collections):
+        self.database.drop_collection(str(collection))
 
-    def dropDb(self, database: str):
+    def drop_database(self, database: str):
         """Deletes a database."""
         self.client.drop_database(database)
 
-    def get(
+    def find(
         self,
         query: dict = {},
-        filter: dict = {"_id": 0},
+        filter: dict = {},
         skip: int = 0,
         limit: int = 0,
-        sort: list[tuple] = [("id", 1)],
+        sort: list[tuple] = [("_id", 1)],
     ) -> list[dict]:
         """
         Retrieves documents from the collection based on the provided criteria.
@@ -100,25 +106,23 @@ class CandyStoreDB:
         )
         return list(results)
 
-    def post(self, document: list[dict] | dict) -> dict:
-        if isinstance(document, dict):
-            result: InsertOneResult = self.collection.insert_one(document)
-            return {
-                "acknowledged": result.acknowledged,
-                "inserted_ids": [str(result.inserted_id)],
-            }
-        elif isinstance(document, list):
-            results: InsertManyResult = self.collection.insert_many(document)
+    def insert_one(self, document: dict) -> dict:
+        result: InsertOneResult = self.collection.insert_one(document)
+        return {
+            "acknowledged": result.acknowledged,
+            "inserted_id": str(result.inserted_id),
+        }
 
-            results.inserted_ids = [str(objId) for objId in results.inserted_ids]
-            return {
-                "acknowledged": results.acknowledged,
-                "inserted_ids": str(results.inserted_ids),
-            }
-        else:
-            raise PyMongoError(message="Invalid document")
+    def insert_many(self, documents: list[dict]) -> dict:
+        result: InsertManyResult = self.collection.insert_many(
+            documents=documents, ordered=False
+        )
+        return {
+            "acknowledged": result.acknowledged,
+            "inserted_ids": [str(objId) for objId in result.inserted_ids],
+        }
 
-    def put(self, id_key: str, id_val: str | int, update_dict:dict[str]) -> dict:
+    def update_one(self, filter: dict, update: dict, upsert: bool = False) -> dict:
         """
         Updates the price of a specific item in the collection.
 
@@ -126,14 +130,14 @@ class CandyStoreDB:
         :param new_price: The new price to set.
         :return: Result of the update operation.
         """
-        if id_key == "_id" and CandyStoreDB.is_valid_object_id(id_val):
-            # Convert string ID to ObjectId
-            id_val = ObjectId(id_val)
+
+        # if "_id" in update.keys() and StoreDB.is_valid_object_id(update["_id"]):
+        #     update["_id"] = ObjectId(update["_id"])
 
         # Perform the update
         result: UpdateResult = self.collection.update_one(
-            {id_key: id_val},  # Query to match the document
-            {"$set": update_dict},  # Update operation
+            filter,  # Query to match the document
+            update,  # Update operation
         )
 
         return {
@@ -144,8 +148,31 @@ class CandyStoreDB:
             "upserted_id": str(result.upserted_id),
         }
 
-    def delete(self, query: dict) -> dict:
-        result: DeleteResult = self.collection.delete_many(query)
+    def update_many(self, filter: dict, update: dict, upsert: bool = False) -> dict:
+        result: UpdateResult = self.collection.update_many(
+            filter,
+            update,
+            upsert,
+        )
+
+        return {
+            "acknowledged": result.acknowledged,
+            "matched_count": result.matched_count,
+            "modified_count": result.modified_count,
+            "raw_result": result.raw_result,
+            "upserted_id": str(result.upserted_id),
+        }
+
+    def delete_one(self, filter: dict) -> dict:
+        result: DeleteResult = self.collection.delete_one(filter)
+        return {
+            "acknowledged": result.acknowledged,
+            "deleted_count": result.deleted_count,
+            "raw_result": result.raw_result,
+        }
+
+    def delete_many(self, filter: dict) -> dict:
+        result: DeleteResult = self.collection.delete_many(filter)
         return {
             "acknowledged": result.acknowledged,
             "deleted_count": result.deleted_count,
@@ -157,3 +184,6 @@ class CandyStoreDB:
 
     def is_valid_object_id(id_str: str) -> bool:
         return ObjectId.is_valid(id_str)
+
+    def str_to_object_id(id_str: str) -> ObjectId:
+        return ObjectId(id_str)

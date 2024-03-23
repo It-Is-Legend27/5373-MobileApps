@@ -1,0 +1,97 @@
+{
+    "items": {
+        "$jsonSchema": {
+            "bsonType": "object",
+            "title": "Item Object Validation",
+            "required": [
+                "name",
+                "prod_url",
+                "img_url",
+                "price",
+                "desc",
+                "category_name",
+                "category_id"
+            ],
+            "properties": {
+                "name": {
+                    "bsonType": "string",
+                    "description": "'name' must be a string and is required"
+                },
+                "prod_url": {
+                    "bsonType": "string",
+                    "description": "'prod_url' must be a string and is required"
+                },
+                "img_url": {
+                    "bsonType": "string",
+                    "description": "'img_url' must be a string and is required"
+                },
+                "price": {
+                    "bsonType": "double",
+                    "description": "'price' must be a double if the field exists"
+                },
+                "desc": {
+                    "bsonType": "string",
+                    "description": "'name' must be a string and is required"
+                },
+                "category_name": {
+                    "bsonType": "string",
+                    "description": "'category_name' must be a string and is required"
+                },
+                "category_id": {
+                    "bsonType": "objectId",
+                    "description": "'category_id' must be an ObjectID and is required"
+                }
+            }
+        }
+    },
+    "categories": {
+        "$jsonSchema": {
+            "bsonType": "object",
+            "title": "Category Object Validation",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "bsonType": "string",
+                    "description": "'name' must be a string and is required"
+                }
+            }
+        }
+    },
+    "users": {
+        "$jsonSchema": {
+            "bsonType": "object",
+            "title": "User Object Validation",
+            "required": [
+                "first_name",
+                "last_name",
+                "username",
+                "email",
+                "password"
+            ],
+            "properties": {
+                "first_name": {
+                    "bsonType": "string",
+                    "description": "'first_name' must be a string and is required"
+                },
+                "last_name": {
+                    "bsonType": "string",
+                    "description": "'last_name' must be a string and is required"
+                },
+                "username": {
+                    "bsonType": "string",
+                    "description": "'username' must be a string and is required"
+                },
+                "email": {
+                    "bsonType": "string",
+                    "description": "'email' must be a string and is required"
+                },
+                "password": {
+                    "bsonType": "string",
+                    "description": "'password' must be a string and is required"
+                }
+            }
+        }
+    }
+}
