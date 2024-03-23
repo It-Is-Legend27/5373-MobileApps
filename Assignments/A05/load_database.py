@@ -79,6 +79,7 @@ def load_database(
 
             db.set_collection(items_collection)
             for id, item in json_data.items():
+                item.pop("id")
                 item["category_name"] = category["name"]
                 item["category_id"] = category["_id"]
                 if not db.find({"name": item["name"]}):
