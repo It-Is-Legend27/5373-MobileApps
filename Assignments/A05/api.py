@@ -214,7 +214,7 @@ def item_by_id(id: str = Path(..., description="The ID of the item to retrieve")
         raise HTTPException(422, f"{e}")
 
 
-@app.get("/image/{id}", tags=["Images"])
+@app.get("/image/id/{id}", tags=["Images"])
 async def item_image(id: str = Path(..., description="The ID of the item to retrieve")):
     """
     Get an item's image, given the ID.
@@ -280,7 +280,7 @@ def update_item_info(
         raise HTTPException(400, detail=f"{e}")
 
 
-@app.delete("/items/{id}", tags=["Items"])
+@app.delete("/items/id/{id}", tags=["Items"])
 def delete_item(id: str = Path(..., description="The ID of the item to retrieve")):
     """
     Remove a item from the store's inventory.
