@@ -26,6 +26,7 @@
                 },
                 "price": {
                     "bsonType": "double",
+                    "minimum": 0.0,
                     "description": "'price' must be a double if the field exists"
                 },
                 "desc": {
@@ -34,7 +35,36 @@
                 },
                 "category": {
                     "bsonType": "string",
-                    "description": "'category_name' must be a string and is required"
+                    "enum": [
+                        "Electronics",
+                        "Clothing & Accessories",
+                        "Home & Kitchen",
+                        "Books & Audible",
+                        "Health & Personal Care",
+                        "Toys & Games",
+                        "Sports & Outdoors",
+                        "Automotive",
+                        "Tools & Home Improvement",
+                        "Grocery & Gourmet Food",
+                        "Pet Supplies",
+                        "Office Products",
+                        "Baby",
+                        "Musical Instruments",
+                        "Industrial & Scientific",
+                        "Movies & TV",
+                        "Patio, Lawn & Garden",
+                        "Arts, Crafts & Sewing",
+                        "Miscellaneous"
+                    ],
+                    "description": "'category' must be a string and is required"
+                },
+                "tags": {
+                    "bsonType": "array",
+                    "items":{
+                        "description":"'tags' must be an array and is required",
+                        "bsonType":"string"
+                    },
+                    "uniqueItems": true
                 }
             }
         }

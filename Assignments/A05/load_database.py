@@ -10,6 +10,7 @@ import glob
 from rich import print
 from dotenv import load_dotenv
 import os
+from hashlib import sha256
 
 
 def load_database(
@@ -23,7 +24,7 @@ def load_database(
     database: str = None,
 ) -> None:
     """Configures the database and populates the collections.
-    
+
     Configures the database for the store and populates the collections.
     """
     # Get absolute path
@@ -64,13 +65,19 @@ def load_database(
     db.collection.create_index({"email": 1}, unique=True)
 
     with open(users_file, "r") as file:
-        users = json.load(file)
+        users: list[dict] = json.load(file)
 
-    db.insert_many(users)
+        # Has each password, then insert each user
+        for user in users:
+            encoded_str: bytes = user["password"].encode()
+            hashed_password: str = sha256(encoded_str).hexdigest()
+            user["password"] = hashed_password
+
+            db.insert_one(user)
 
     for file in json_files:
         parts = file.split("/")
-        category = parts[-1][:-5].replace("-", " ").title()
+        tag = parts[-1][:-5].replace("-", " ").title()
 
         with open(file) as f:
             json_data: dict = json.load(f)
@@ -78,7 +85,8 @@ def load_database(
             db.set_collection(StoreDatabase.Collections.ItemsCollection)
             for id, item in json_data.items():
                 item.pop("id")
-                item["category"] = category
+                item["category"] = StoreDatabase.Categories.GroceryNGourmetFood
+                item["tags"] = [tag, "Candy", "Sweets"]
                 # Avoid inserting duplicates
                 if not db.find({"name": item["name"]}):
                     db.insert_one(item)

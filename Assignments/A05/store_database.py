@@ -29,6 +29,31 @@ class StoreDatabase:
     Performs operations on MongoDB database.
     """
 
+    class Categories(StrEnum):
+        """Enums for representing categories.
+
+        Represents categories.
+        """
+        Electronics: str = "Electronics"
+        ClothingNAccessories = "Clothing & Accessories"
+        HomeNKitchen = "Home & Kitchen"
+        BooksNAudible = "Books & Audible"
+        HealthNPersonalCare = "Health & Personal Care"
+        ToysNGames = "Toys & Games"
+        SportsNOutDoors = "Sports & Outdoors"
+        Automotive = "Automotive"
+        ToolsNHomeImprovement = "Tools & Home Improvement"
+        GroceryNGourmetFood = "Grocery & Gourmet Food"
+        PetSupplies = "Pet Supplies"
+        OfficeProducts = "Office Products"
+        Baby = "Baby"
+        MusicalInstruments = "Musical Instruments"
+        IndustrialNScientific = "Industrial & Scientific"
+        MoviesNTV = "Movies & TV"
+        PatioNLawnNGarden = "Patio, Lawn & Garden"
+        ArtsNCraftsNSewing = "Arts, Crafts & Sewing"
+        Miscellaneous = "Miscellaneous"
+
     class Collections(StrEnum):
         """Enums for representing collections.
 

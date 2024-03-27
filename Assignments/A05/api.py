@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 import requests
 from models import Item, User
+from hashlib import sha256
 
 
 # ██████   █████  ███████ ███████     ███    ███  ██████  ██████  ███████ ██      ███████
@@ -142,6 +143,7 @@ def search_items(
         strict=False,
     ),
     category: str = Query(None, description="Category of item"),
+    tags:list[str] = Query(None, description="Tags associated with the item"),
     skip: int = Query(0, description="Number of items to skip", ge=0),
     limit: int = Query(0, description="Limits the number of items to return", ge=0),
 ) -> dict:
@@ -164,6 +166,8 @@ def search_items(
             query["desc"] = {"$regex": f"{desc}", "$options": "i"}
         if category:
             query["category"] = category
+        if tags:
+            query["tags"] = {"$in": tags}
 
         if max_price == None or min_price <= max_price:
             query["price"] = {"$gte": min_price, "$lte": max_price}
@@ -305,10 +309,8 @@ def all_categories():
     """
     Get a list of all item category information.
     """
-    awesome_store_db.set_collection(StoreDatabase.Collections.ItemsCollection)
-
     try:
-        category_list: list[dict] = awesome_store_db.distinct("category")
+        category_list: list[dict] = [str(category) for category in StoreDatabase.Categories]
         return {"categories": category_list}
     except Exception as e:
         raise HTTPException(400, f"{e}")
@@ -325,6 +327,10 @@ def login(
     awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
 
     try:
+        # Hashing password
+        encoded_str:bytes = password.encode()
+        hashed_password:str = sha256(encoded_str).hexdigest()
+
         result: dict = awesome_store_db.find_one({"username": username})
 
         if not result:
@@ -332,7 +338,7 @@ def login(
 
         result = dict(result)
 
-        success: bool = result.get("password") == password
+        success: bool = result.get("password") == hashed_password
 
         if success:
             return {"success": success, "detail": "Login successful"}
@@ -351,6 +357,8 @@ def register(user: User = Body(description="User information")):
     awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
 
     try:
+        encoded_str:bytes = user.password.encode()
+        user.password = sha256(encoded_str).hexdigest()
         result: dict = awesome_store_db.insert_one(dict(user))
 
         return {"success": True, "detail": "Registration successful."}
