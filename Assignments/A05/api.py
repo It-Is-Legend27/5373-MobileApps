@@ -334,7 +334,7 @@ def login(
         result: dict = awesome_store_db.find_one({"username": username})
 
         if not result:
-            return {"success": False, "detail": "Username does not exist."}
+            return {"success": False, "detail": "Username does not exist"}
 
         result = dict(result)
 
@@ -361,11 +361,11 @@ def register(user: User = Body(description="User information")):
         user.password = sha256(encoded_str).hexdigest()
         result: dict = awesome_store_db.insert_one(dict(user))
 
-        return {"success": True, "detail": "Registration successful."}
+        return {"success": True, "detail": "Registration successful"}
     except DuplicateKeyError as d:
         return {
             "success": False,
-            "detail": "Username or email is already in use. Use a different username or email address.",
+            "detail": "Username or email is already in use. Use a different username or email address",
         }
     except Exception as e:
         raise HTTPException(400, f"{e}")
