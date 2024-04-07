@@ -20,6 +20,8 @@ from pydantic import BaseModel, Field
 import requests
 from models import Item, User
 from hashlib import sha256
+from email_validator import ValidatedEmail, validate_email, EmailNotValidError
+import re
 
 
 # ██████   █████  ███████ ███████     ███    ███  ██████  ██████  ███████ ██      ███████
@@ -143,7 +145,7 @@ def search_items(
         strict=False,
     ),
     category: str = Query(None, description="Category of item"),
-    tags:list[str] = Query(None, description="Tags associated with the item"),
+    tags: list[str] = Query(None, description="Tags associated with the item"),
     skip: int = Query(0, description="Number of items to skip", ge=0),
     limit: int = Query(0, description="Limits the number of items to return", ge=0),
 ) -> dict:
@@ -310,7 +312,9 @@ def all_categories():
     Get a list of all item category information.
     """
     try:
-        category_list: list[dict] = [str(category) for category in StoreDatabase.Categories]
+        category_list: list[dict] = [
+            str(category) for category in StoreDatabase.Categories
+        ]
         return {"categories": category_list}
     except Exception as e:
         raise HTTPException(400, f"{e}")
@@ -328,8 +332,8 @@ def login(
 
     try:
         # Hashing password
-        encoded_str:bytes = password.encode()
-        hashed_password:str = sha256(encoded_str).hexdigest()
+        encoded_str: bytes = password.encode()
+        hashed_password: str = sha256(encoded_str).hexdigest()
 
         result: dict = awesome_store_db.find_one({"username": username})
 
@@ -357,18 +361,42 @@ def register(user: User = Body(description="User information")):
     awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
 
     try:
-        encoded_str:bytes = user.password.encode()
+        name_pattern = re.compile(r"^[A-Z]([a-zA-z]*)(([ -])?[A-Z]([a-zA-z]*))*$")
+
+        # Data validation
+        if not name_pattern.match(user.first_name):
+            raise Exception(
+                "Invalid first name. Must consist of alphabetic characters. Cannot be empty string"
+            )
+        if not name_pattern.match(user.last_name):
+            raise Exception(
+                "Invalid first name. Must consist of alphabetic characters. Cannot be empty string"
+            )
+        if not user.password.isalnum():
+            raise Exception(
+                "Invalid password. Must consist of alpah-numeric characters. Cannot be empty string"
+            )
+
+        # Validate email
+        emailinfo: ValidatedEmail = validate_email(user.email)
+
+        encoded_str: bytes = user.password.encode()
         user.password = sha256(encoded_str).hexdigest()
         result: dict = awesome_store_db.insert_one(dict(user))
 
         return {"success": True, "detail": "Registration successful"}
+    except EmailNotValidError as e:
+        return {
+            "success": False,
+            "detail": "Invalid email address. Please enter a valid email address.",
+        }
     except DuplicateKeyError as d:
         return {
             "success": False,
             "detail": "Username or email is already in use. Use a different username or email address",
         }
     except Exception as e:
-        raise HTTPException(400, f"{e}")
+        return {"success": False, "detail": f"{e}"}
 
 
 if __name__ == "__main__":

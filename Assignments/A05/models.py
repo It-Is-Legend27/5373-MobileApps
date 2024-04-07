@@ -4,8 +4,6 @@ Provides Item class an User class for validation of request body data.
 """
 
 from pydantic import BaseModel, Field
-
-
 class Item(BaseModel):
     """
     Provides JSON-schema for a "item" object / entry.
