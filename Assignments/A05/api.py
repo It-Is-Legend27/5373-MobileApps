@@ -18,7 +18,7 @@ from rich import print
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 import requests
-from models import Item, User
+from models import Item, User, Location
 from hashlib import sha256
 from email_validator import ValidatedEmail, validate_email, EmailNotValidError
 import re
@@ -51,6 +51,14 @@ TAGS_METADATA: list[dict[str, str]] = [
     {
         "name": "Login and Registration",
         "description": "Routes for login and registration.",
+    },
+    {
+        "name": "Users",
+        "description": "Operations with user data.",
+    },
+    {
+        "name": "Locations",
+        "description": "Operations with user locations.",
     },
 ]
 
@@ -294,7 +302,6 @@ def delete_item(id: str = Path(..., description="The ID of the item to retrieve"
     awesome_store_db.set_collection(StoreDatabase.Collections.ItemsCollection)
 
     if not StoreDatabase.is_valid_object_id(id):
-        print("Whoosh")
         raise HTTPException(404, detail="Not Found")
 
     try:
@@ -397,6 +404,198 @@ def register(user: User = Body(description="User information")):
         }
     except Exception as e:
         return {"success": False, "detail": f"{e}"}
+
+
+@app.get("/users", tags=["Users"])
+def get_all_user_data():
+    try:
+        awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
+
+        users: list[dict] = awesome_store_db.find({}, {"_id": 0, "password": 0})
+
+        # If user is found, return user data
+        return {"users": users}
+    except Exception as e:
+        raise HTTPException(422, f"{e}")
+
+
+@app.get("/users/username/{username}", tags=["Users"])
+def get_user_data(username: str = Path(..., description="The username of the user.")):
+    """
+    Returns user data for a given user.
+    """
+    try:
+        awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
+
+        user: dict | None = awesome_store_db.find_one(
+            {"username": username}, {"_id": 0, "password": 0}
+        )
+
+        # If user is not found, report 404
+        if user is None:
+            raise HTTPException(404, detail="Not Found")
+
+        # If user is found, return user data
+        return {"user": user}
+    except HTTPException as h:
+        raise HTTPException(404, detail="Not Found")
+    except Exception as e:
+        raise HTTPException(422, f"{e}")
+
+
+@app.put("/users/username/{username}", tags=["Users"])
+def update_user_data(
+    username: str = Path(..., description="The username of the user."),
+    first_name: str = Body(description="The first name of a user."),
+    last_name: str = Body(description="The last name of a user."),
+    email: str = Body(description="The email of a user."),
+    password: str = Body(description="The password of a user."),
+):
+    """
+    Update the user data of a given user.
+    """
+    try:
+        awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
+
+        name_pattern = re.compile(r"^[A-Z]([a-zA-z]*)(([ -])?[A-Z]([a-zA-z]*))*$")
+
+        # Data validation
+        if not name_pattern.match(first_name):
+            raise Exception(
+                "Invalid first name. Must consist of alphabetic characters. Cannot be empty string"
+            )
+        if not name_pattern.match(last_name):
+            raise Exception(
+                "Invalid first name. Must consist of alphabetic characters. Cannot be empty string"
+            )
+        if not password.isalnum():
+            raise Exception(
+                "Invalid password. Must consist of alpah-numeric characters. Cannot be empty string"
+            )
+
+        # Validate email
+        emailinfo: ValidatedEmail = validate_email(email)
+
+        encoded_str: bytes = password.encode()
+        password = sha256(encoded_str).hexdigest()
+
+        result: dict = awesome_store_db.update_one(
+            {"username": username},
+            {"$set": {"email": email, "password": password}},
+            upsert=False,
+        )
+
+        return result
+    except Exception as e:
+        raise HTTPException(400, detail=f"{e}")
+
+
+# @app.delete("/users/username/{username}", tags=["Users"])
+# def remove_user_data(
+#     username: str = Path(..., description="The username of the user.")
+# ):
+#     """
+#     Remove a user's data from the user collection.
+#     """
+#     try:
+#         awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
+
+#         result: dict = awesome_store_db.delete_one({"username": username})
+#         return result
+#     except Exception as e:
+#         raise HTTPException(400, f"{e}")
+
+
+@app.get("/locations/username/{username}", tags=["Locations"])
+def get_location_data(
+    username: str = Path(..., description="The username of the user.")
+):
+    """
+    Returns location data for a given user.
+    """
+    try:
+        awesome_store_db.set_collection(StoreDatabase.Collections.LocationsCollection)
+
+        location: dict | None = awesome_store_db.find_one(
+            {"username": username}, {"_id": 0}
+        )
+
+        # If user is not found, report 404
+        if location is None:
+            raise HTTPException(404, detail="Not Found")
+
+        # If user is found, return user data
+        return {"location": location}
+    except HTTPException as h:
+        raise HTTPException(404, detail="Not Found")
+    except Exception as e:
+        raise HTTPException(422, f"{e}")
+
+
+@app.put("/locations/username/{username}", tags=["Locations"])
+def update_location_data(
+    username: str = Path(..., description="The username of the user."),
+    latitude: float = Body(description="The latitude of the user."),
+    longitude: float = Body(description="The longitude of the user."),
+    timestamp: int = Body(
+        description="The UNIX timestamp in milliseconds when the location was received."
+    ),
+):
+    """
+    Update the location data of a given user.
+    """
+    try:
+        awesome_store_db.set_collection(StoreDatabase.Collections.LocationsCollection)
+
+        result: dict = awesome_store_db.update_one(
+            {"username": username},
+            {
+                "$set": {
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "timestamp": timestamp,
+                }
+            },
+            upsert=True,
+        )
+
+        return result
+    except Exception as e:
+        raise HTTPException(400, detail=f"{e}")
+
+
+# @app.delete("/locations/username/{username}", tags=["Locations"])
+# def remove_location_data(
+#     username: str = Path(..., description="The username of the user.")
+# ):
+#     """
+#     Remove a user's location data from the locations collection.
+#     """
+#     try:
+#         awesome_store_db.set_collection(StoreDatabase.Collections.LocationsCollection)
+
+#         result: dict = awesome_store_db.delete_one({"username": username})
+#         return result
+#     except Exception as e:
+#         raise HTTPException(400, f"{e}")
+
+
+@app.post("/locations", tags=["Locations"])
+def post_location_data(
+    location: Location = Body(
+        description="For inserting a item record into the database"
+    ),
+):
+    """
+    Add a new user's location to the location collection.
+    """
+    awesome_store_db.set_collection(StoreDatabase.Collections.LocationsCollection)
+
+    try:
+        result: dict = awesome_store_db.insert_one(dict(location))
+        return result
+    except Exception as e:
+        raise HTTPException(400, f"{e}")
 
 
 if __name__ == "__main__":

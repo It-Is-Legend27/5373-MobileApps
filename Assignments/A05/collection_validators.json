@@ -103,5 +103,35 @@
                 }
             }
         }
+    },
+    "locations":{
+        "$jsonSchema": {
+            "bsonType": "object",
+            "title": "Location Object Validation",
+            "required": [
+                "username",
+                "latitude",
+                "longitude",
+                "timestamp"
+            ],
+            "properties": {
+                "username": {
+                    "bsonType": "string",
+                    "description": "'username' must be a string and is required"
+                },
+                "latitude":{
+                    "bsonType": "double",
+                    "description": "'latitude' must be a double and is required"
+                },
+                "longitude":{
+                    "bsonType": "double",
+                    "description": "'longitude' must be a double and is required"
+                },
+                "timestamp":{
+                    "bsonType": "long",
+                    "description": "'timestamp' must be a long and is required"
+                }
+            }
+        }
     }
 }

@@ -17,6 +17,7 @@ def load_database(
     folder_path: str = "./",
     collection_validator_config: str = "./collection_validators.json",
     users_file: str = "./users.json",
+    locations_file: str = "./locations.json",
     username: str = None,
     password: str = None,
     host: str = None,
@@ -46,6 +47,7 @@ def load_database(
 
     db.drop_collection(StoreDatabase.Collections.ItemsCollection)
     db.drop_collection(StoreDatabase.Collections.UsersCollection)
+    db.drop_collection(StoreDatabase.Collections.LocationsCollection)
 
     # Create items collection with specified schema and unique index
     db.create_collection(
@@ -53,7 +55,6 @@ def load_database(
         validators[StoreDatabase.Collections.ItemsCollection],
     )
     db.set_collection(StoreDatabase.Collections.ItemsCollection)
-    # db.collection.create_index({"name": 1}, unique=True)
 
     # Create users collection with specified schema and unique indices
     db.create_collection(
@@ -67,13 +68,27 @@ def load_database(
     with open(users_file, "r") as file:
         users: list[dict] = json.load(file)
 
-        # Has each password, then insert each user
+        # Hash each password, then insert each user
         for user in users:
             encoded_str: bytes = user["password"].encode()
             hashed_password: str = sha256(encoded_str).hexdigest()
             user["password"] = hashed_password
 
             db.insert_one(user)
+
+    # Create items collection with specified schema and unique index
+    db.create_collection(
+        StoreDatabase.Collections.LocationsCollection,
+        validators[StoreDatabase.Collections.LocationsCollection],
+    )
+    db.set_collection(StoreDatabase.Collections.LocationsCollection)
+    db.collection.create_index({"username": 1}, unique=True)
+
+    with open(locations_file, "r") as file:
+        locations: list[dict] = json.load(file)
+
+        # Insert all locations
+        db.insert_many(locations)
 
     for file in json_files:
         parts = file.split("/")

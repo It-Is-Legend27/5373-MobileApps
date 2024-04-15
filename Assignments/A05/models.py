@@ -31,7 +31,6 @@ class User(BaseModel):
     email: str = Field(description="The email of a user.")
     password: str = Field(description="The password of a user.")
 
-
 class Location(BaseModel):
     """
     Provides JSON-schema for a "location" object / entry.
@@ -40,4 +39,6 @@ class Location(BaseModel):
     username: str = Field(description="The username of a user.")
     latitude: float = Field(description="The latitude of the user.")
     longitude: float = Field(description="The longitude of the user.")
-    timestamp: float
+    timestamp: int = Field(
+        description="The UNIX timestamp in milliseconds when the location was received."
+    )
