@@ -506,6 +506,19 @@ def update_user_data(
 #         raise HTTPException(400, f"{e}")
 
 
+@app.get("/locations", tags=["Locations"])
+def get_all_location_data():
+    try:
+        awesome_store_db.set_collection(StoreDatabase.Collections.LocationsCollection)
+
+        locations: list[dict] = awesome_store_db.find({}, {"_id": 0})
+
+        # If user is found, return user data
+        return {"locations": locations}
+    except Exception as e:
+        raise HTTPException(422, f"{e}")
+
+
 @app.get("/locations/username/{username}", tags=["Locations"])
 def get_location_data(
     username: str = Path(..., description="The username of the user.")
