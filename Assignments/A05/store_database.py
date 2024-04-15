@@ -34,6 +34,7 @@ class StoreDatabase:
 
         Represents categories.
         """
+
         Electronics: str = "Electronics"
         ClothingNAccessories = "Clothing & Accessories"
         HomeNKitchen = "Home & Kitchen"
@@ -62,6 +63,7 @@ class StoreDatabase:
 
         ItemsCollection: str = "items"
         UsersCollection: str = "users"
+        LocationsCollection: str = "locations"
 
     def __init__(
         self,

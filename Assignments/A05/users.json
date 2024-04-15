@@ -12,5 +12,75 @@
         "username": "mickey_mouse",
         "email": "mickeymouse@email.com",
         "password": "mickey"
+    },
+    {
+        "first_name": "Joelynn",
+        "last_name": "Doyley",
+        "username": "jdoyley0",
+        "email": "jdoyley0@nbcnews.com",
+        "password": "password"
+    },
+    {
+        "first_name": "Izaak",
+        "last_name": "Mockett",
+        "username": "imockett1",
+        "email": "imockett1@answers.com",
+        "password": "password"
+    },
+    {
+        "first_name": "Haily",
+        "last_name": "Baskeyfied",
+        "username": "hbaskeyfied2",
+        "email": "hbaskeyfied2@reference.com",
+        "password": "password"
+    },
+    {
+        "first_name": "Dirk",
+        "last_name": "Bosch",
+        "username": "dbosch3",
+        "email": "dbosch3@fc2.com",
+        "password": "password"
+    },
+    {
+        "first_name": "Anselma",
+        "last_name": "Handscomb",
+        "username": "ahandscomb4",
+        "email": "ahandscomb4@constantcontact.com",
+        "password": "password"
+    },
+    {
+        "first_name": "Devina",
+        "last_name": "Readmire",
+        "username": "dreadmire5",
+        "email": "dreadmire5@va.gov",
+        "password": "password"
+    },
+    {
+        "first_name": "Ainsley",
+        "last_name": "Freake",
+        "username": "afreake6",
+        "email": "afreake6@webnode.com",
+        "password": "password"
+    },
+    {
+        "first_name": "Noel",
+        "last_name": "Willmer",
+        "username": "nwillmer7",
+        "email": "nwillmer7@jiathis.com",
+        "password": "password"
+    },
+    {
+        "first_name": "Maxine",
+        "last_name": "Bartosik",
+        "username": "mbartosik8",
+        "email": "mbartosik8@yahoo.co.jp",
+        "password": "password"
+    },
+    {
+        "first_name": "Brandise",
+        "last_name": "Piletic",
+        "username": "bpiletic9",
+        "email": "bpiletic9@apache.org",
+        "password": "password"
     }
 ]
