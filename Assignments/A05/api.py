@@ -158,7 +158,7 @@ def search_items(
     limit: int = Query(0, description="Limits the number of items to return", ge=0),
 ) -> dict:
     """
-    Search for items based on a query string (e.g., name, category, flavor).
+    Search for items based on a query string (e.g., name, category, tags).
     """
     awesome_store_db.set_collection(StoreDatabase.Collections.ItemsCollection)
 
