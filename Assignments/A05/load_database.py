@@ -90,6 +90,11 @@ def load_database(
         # Insert all locations
         db.insert_many(locations)
 
+    with open("movies.json", "r") as file:
+        db.set_collection(StoreDatabase.Collections.ItemsCollection)
+        data = json.load(file)
+        db.insert_many(data)
+
     for file in json_files:
         parts = file.split("/")
         tag = parts[-1][:-5].replace("-", " ").title()

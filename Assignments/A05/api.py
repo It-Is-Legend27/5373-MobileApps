@@ -407,22 +407,24 @@ def register(user: User = Body(description="User information")):
 
 
 @app.get("/users", tags=["Users"])
-def get_all_user_data():
+def get_all_user_profiles():
     try:
         awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
 
         users: list[dict] = awesome_store_db.find({}, {"_id": 0, "password": 0})
 
-        # If user is found, return user data
+        # If user is found, return user profile data
         return {"users": users}
     except Exception as e:
         raise HTTPException(422, f"{e}")
 
 
 @app.get("/users/username/{username}", tags=["Users"])
-def get_user_data(username: str = Path(..., description="The username of the user.")):
+def get_user_profile(
+    username: str = Path(..., description="The username of the user.")
+):
     """
-    Returns user data for a given user.
+    Returns user profile data for a given user.
     """
     try:
         awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
@@ -452,7 +454,7 @@ def update_user_data(
     password: str = Body(description="The password of a user."),
 ):
     """
-    Update the user data of a given user.
+    Update the user profile data of a given user.
     """
     try:
         awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
@@ -607,6 +609,49 @@ def post_location_data(
     try:
         result: dict = awesome_store_db.insert_one(dict(location))
         return result
+    except Exception as e:
+        raise HTTPException(400, f"{e}")
+
+
+@app.get("/user-data", tags=["Users"])
+def get_all_user_data():
+    """
+    Get complete user data, profile data and location data.
+    """
+    pipeline: list[dict] = [
+        {
+            "$lookup": {
+                "from": str(
+                    StoreDatabase.Collections.LocationsCollection
+                ),  # The collection to join with
+                "localField": "username",  # Field from the local collection
+                "foreignField": "username",  # Field from the foreign collection
+                "as": "user_data",  # Name for the new array field
+            }
+        },
+        {
+            "$unwind": "$user_data"  # Deconstruct the product array field created by $lookup
+        },
+        {
+            "$project": {
+                "_id": 0,  # Exclude _id field from output
+                "username": 1,
+                "first_name": 1,
+                "last_name": 1,
+                "email": 1,
+                "latitude": "$user_data.latitude",  # Include latitude from the joined data
+                "longitude": "$user_data.longitude",  # Include longitude from the joined data
+                "timestamp": "$user_data.timestamp",
+            }
+        },
+    ]
+
+    try:
+        awesome_store_db.set_collection(StoreDatabase.Collections.UsersCollection)
+
+        user_data: list[dict] = awesome_store_db.aggregate(pipeline)
+
+        return {"user_data": user_data}
     except Exception as e:
         raise HTTPException(400, f"{e}")
 

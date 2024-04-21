@@ -8,6 +8,7 @@ from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.database import Database
 from pymongo.collection import Collection
 from pymongo.cursor import Cursor
+from pymongo.command_cursor import CommandCursor
 from pymongo.results import (
     InsertOneResult,
     InsertManyResult,
@@ -212,6 +213,26 @@ class StoreDatabase:
         results: Cursor = (
             self.collection.find(filter, projection).sort(sort).skip(skip).limit(limit)
         )
+
+        result_list: list[dict] = []
+        for doc in results:
+            fdoc: dict = dict(doc)
+            for key, value in fdoc.items():
+                if isinstance(value, ObjectId):
+                    fdoc.update({key: str(value)})
+            result_list.append(fdoc)
+        return result_list
+
+    def aggregate(self, pipeline: list[dict]) -> list[dict]:
+        """Perform an aggregation on the currently set collection.
+
+        Args:
+            pipeline (list[dict]): The pipeline for the aggregation query.
+
+        Returns:
+            list[dict]: A list of dictionaries resulting from the aggregation.
+        """
+        results: CommandCursor = self.collection.aggregate(pipeline)
 
         result_list: list[dict] = []
         for doc in results:
