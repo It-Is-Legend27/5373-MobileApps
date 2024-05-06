@@ -18,10 +18,11 @@ from rich import print
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 import requests
-from models import Item, User, Location
+from models import Item, User, Location, FileBody
 from hashlib import sha256
 from email_validator import ValidatedEmail, validate_email, EmailNotValidError
 import re
+import mimetypes
 
 
 # ██████   █████  ███████ ███████     ███    ███  ██████  ██████  ███████ ██      ███████
@@ -71,7 +72,7 @@ DESCRIPTION: str = """
 # WE HAVE THE items
 This API returns awesome items. **Enough said**.
 <br>
-![item](./static/store.gif)
+![item](./static/assets/store.gif)
 """
 awesome_store_db: StoreDatabase = None
 
@@ -654,6 +655,22 @@ def get_all_user_data():
         return {"user_data": user_data}
     except Exception as e:
         raise HTTPException(400, f"{e}")
+
+
+@app.get("/uploaded-images/{file_path}", tags=["Images"])
+def get_uploaded_image(
+    file_path: str = Path(..., description="File path of the image.")
+):
+    mimetypes.guess_type
+    pass
+
+
+@app.post("/uploaded-images", tags=["Images"])
+def upload_image(
+    file:FileBody = Body(description="Request body for a file sent as base64."),
+):
+    print(file.file_name)
+    print(file.file_type)
 
 
 if __name__ == "__main__":

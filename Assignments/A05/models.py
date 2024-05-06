@@ -42,3 +42,11 @@ class Location(BaseModel):
     timestamp: int = Field(
         description="The UNIX timestamp in milliseconds when the location was received."
     )
+
+class FileBody(BaseModel):
+    """
+    Provides a JSON-schema for a "file" object containing base64 data of a file.
+    """
+    base64_content:str = Field(description="The base64 data of the file.")
+    file_type:str = Field(description="The file type of the file.")
+    file_name:str = Field(description="The name of the file.")
