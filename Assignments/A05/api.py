@@ -22,7 +22,8 @@ from models import Item, User, Location, FileBody
 from hashlib import sha256
 from email_validator import ValidatedEmail, validate_email, EmailNotValidError
 import re
-import mimetypes
+import base64
+import os
 
 
 # ██████   █████  ███████ ███████     ███    ███  ██████  ██████  ███████ ██      ███████
@@ -661,16 +662,31 @@ def get_all_user_data():
 def get_uploaded_image(
     file_path: str = Path(..., description="File path of the image.")
 ):
-    mimetypes.guess_type
+
     pass
 
 
 @app.post("/uploaded-images", tags=["Images"])
-def upload_image(
-    file:FileBody = Body(description="Request body for a file sent as base64."),
+async def upload_image(
+    file: FileBody = Body(description="Request body for a file sent as base64."),
 ):
-    print(file.file_name)
-    print(file.file_type)
+
+    file_bytes: bytes = base64.decodebytes(file.base64_content.encode(encoding="ascii"))
+
+    BASE_DIR: str = os.path.dirname(os.path.abspath(__file__))
+
+    save_path: str = os.path.join(BASE_DIR, "static", "uploaded-images", file.file_name)
+
+    if os.path.exists(save_path):
+        return {"detail": "Image already exists."}
+
+    try:
+        with open(save_path, "wb") as output_file:
+            output_file.write(file_bytes)
+    except Exception as e:
+        return {"detail": f"Failed to upload image. {file.file_name}"}
+
+    return {"detail": f"Successfully uploaded {file.file_name}"}
 
 
 if __name__ == "__main__":
