@@ -1,4 +1,4 @@
-## A05 - React + FastAPI + MongoDB
+## A06 - Location
 
 ### Angel Badillo, Miklos Moreno
 

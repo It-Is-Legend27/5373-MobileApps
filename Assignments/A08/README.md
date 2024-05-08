@@ -1,11 +1,10 @@
-## A05 - React + FastAPI + MongoDB
+## A08 - Final Presentation
 
 ### Angel Badillo, Miklos Moreno
 
 ### Description:
 
-This API provides routes for querying a MongoDB for Awesome store records. These routes facilitate various functionalities including retrieving all item records, getting items by category, searching by keyword in name or description, filtering by price range, getting item details by ID,  getting images of each items by ID, updating prices and other attributes, as well as deleting items from the database. There are also routes for retrieving and posting location data for users, login and register of users, image upload, and more. In addition to the API, there is a React Native app,
-Awesome Store App, which interacts with the API, as well as performs other functions such as allowing the user to search for items by category and name, view other users on Google Maps, uploaded images to the https://thehonoredone.live server, and chat with other users.
+This assignment was to prepare a video demonstrating
 
 ### App
 [Awesome Store App](https://github.com/It-Is-Legend27/4443-5373-A05)

@@ -1,4 +1,4 @@
-## A05 - React + FastAPI + MongoDB
+## A07 - Chat
 
 ### Angel Badillo, Miklos Moreno
 

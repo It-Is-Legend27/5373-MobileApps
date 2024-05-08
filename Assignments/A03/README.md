@@ -1,8 +1,8 @@
-## A03 - N/A
+## A03 - Create Server & Run Api
 ### Angel Badillo
 ### Description:
 
-N/A
+This assignment was to set up a Digital Ocean droplet and ensure an API could be run on it.
 
 ### Files
 
