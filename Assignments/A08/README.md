@@ -4,7 +4,7 @@
 
 ### Description:
 
-This assignment was to prepare a video demonstrating
+This assignment was to present over our final version of the app and API with all the required functionality.
 
 ### App
 [Awesome Store App](https://github.com/It-Is-Legend27/4443-5373-A05)
